@@ -3,3 +3,11 @@ Cargo.lock
 *.swp
 *.swo
 .env
+
+# Devnet
+optimism/
+devnet.log
+.localtestdata/
+
+# Guest ELF outputs
+guests/*/elf/
