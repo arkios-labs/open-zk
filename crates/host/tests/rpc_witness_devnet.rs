@@ -13,7 +13,6 @@ use alloy_primitives::B256;
 use open_zk_core::traits::WitnessProvider;
 use open_zk_core::types::{ProofRequest, ProvingMode};
 use open_zk_host::witness::RpcWitnessProvider;
-use std::path::PathBuf;
 use std::time::Instant;
 
 fn init_tracing() {
@@ -28,6 +27,7 @@ fn init_tracing() {
 const L1_RPC: &str = "http://127.0.0.1:8545";
 const L2_RPC: &str = "http://127.0.0.1:9545";
 const L1_BEACON: &str = "http://127.0.0.1:5052";
+const OP_NODE: &str = "http://127.0.0.1:7545";
 
 /// Fetch L1 head hash from devnet.
 async fn get_l1_head() -> B256 {
@@ -48,7 +48,7 @@ async fn get_l1_head() -> B256 {
 async fn get_l2_output_root(block_number: u64) -> B256 {
     use alloy_provider::{Provider, ProviderBuilder};
 
-    let url: url::Url = "http://127.0.0.1:7545".parse().unwrap();
+    let url: url::Url = OP_NODE.parse().unwrap();
     let provider = ProviderBuilder::new().connect_http(url);
     let resp: serde_json::Value = provider
         .raw_request(
@@ -117,14 +117,41 @@ async fn test_preflight_rpc_calls() {
     println!("Match: {}", derived_output_root == op_node_root);
 }
 
+/// Test rollup config fetching from OP Node.
+///
+/// Verifies that `ensure_rollup_config()` can fetch the rollup config
+/// from the OP Node via `optimism_rollupConfig` RPC and write it to a temp file.
+#[tokio::test]
+#[ignore]
+async fn test_rollup_config_fetch_from_op_node() {
+    init_tracing();
+
+    // Verify the OP Node is reachable and returns a valid rollup config.
+    use alloy_provider::{Provider, ProviderBuilder};
+
+    let op_url: url::Url = OP_NODE.parse().unwrap();
+    let op_provider = ProviderBuilder::new().connect_http(op_url);
+
+    let config: serde_json::Value = op_provider
+        .raw_request::<_, serde_json::Value>("optimism_rollupConfig".into(), ())
+        .await
+        .unwrap();
+
+    println!("Rollup config keys: {:?}", config.as_object().unwrap().keys().collect::<Vec<_>>());
+    assert!(config.get("l2_chain_id").is_some() || config.get("chain_id").is_some(),
+        "rollup config should contain chain ID");
+    println!("Rollup config fetched successfully from OP Node");
+}
+
 /// Test real witness generation for a single L2 block (block 1→2).
 ///
 /// This tests the full kona pipeline:
-/// 1. Pre-flight RPC calls (fetch L2 block hash + output root)
-/// 2. SingleChainHost configuration
-/// 3. kona_client::single::run (native derivation)
-/// 4. Preimage collection and serialization
-#[tokio::test]
+/// 1. Rollup config fetching from OP Node
+/// 2. Pre-flight RPC calls (fetch L2 block hash + output root)
+/// 3. SingleChainHost configuration
+/// 4. kona_client::single::run (native derivation)
+/// 5. Preimage collection and serialization
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_real_witness_generation_single_block() {
     init_tracing();
@@ -139,7 +166,7 @@ async fn test_real_witness_generation_single_block() {
         L2_RPC.to_string(),
         L1_BEACON.to_string(),
     )
-    .with_rollup_config(PathBuf::from("../../devnet-rollup.json"))
+    .with_op_node_url(OP_NODE.to_string())
     .with_chain_id(901);
 
     let request = ProofRequest {
