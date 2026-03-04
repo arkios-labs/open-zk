@@ -5,8 +5,8 @@ edition = "2021"
 
 # This crate is NOT a workspace member.
 # It is compiled separately for zkVM targets:
-#   SP1:       cargo build --features sp1 --target riscv32im-succinct-zkvm-elf
-#   RISC Zero: cargo build --features risczero --target riscv32im-risc0-zkvm-elf
+#   SP1:       cd guests/range && cargo prove build --features sp1
+#   RISC Zero: cd guests/range && cargo risczero build --features risczero
 
 [features]
 sp1 = ["open-zk-guest/sp1"]
@@ -17,3 +17,16 @@ open-zk-guest = { path = "../../crates/guest", default-features = false }
 open-zk-core = { path = "../../crates/core", default-features = false }
 alloy-primitives = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
+
+# Kona guest-side crates for OP Stack derivation (no_std compatible).
+# These are used when the full kona derivation pipeline is enabled.
+# kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+# kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+# kona-driver = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+# kona-executor = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+# kona-preimage = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+# kona-mpt = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = "thin"

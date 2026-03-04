@@ -3,7 +3,10 @@ name = "guest-aggregation"
 version = "0.1.0"
 edition = "2021"
 
-# Compiled separately for zkVM targets. Not a workspace member.
+# This crate is NOT a workspace member.
+# It is compiled separately for zkVM targets:
+#   SP1:       cd guests/aggregation && cargo prove build --features sp1
+#   RISC Zero: cd guests/aggregation && cargo risczero build --features risczero
 
 [features]
 sp1 = ["open-zk-guest/sp1"]
@@ -14,3 +17,7 @@ open-zk-guest = { path = "../../crates/guest", default-features = false }
 open-zk-core = { path = "../../crates/core", default-features = false }
 alloy-primitives = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
