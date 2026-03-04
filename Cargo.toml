@@ -11,6 +11,9 @@ members = [
 ]
 exclude = [
     "guests/range",
+    "guests/range-ethereum",
+    "guests/range-celestia",
+    "guests/range-eigenda",
     "guests/aggregation",
 ]
 
@@ -76,3 +79,6 @@ kona-registry = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2
 sp1-sdk = "6"
 sp1-zkvm = "6"
 risc0-zkvm = "3"
+
+# Serialization (zero-copy)
+rkyv = { version = "0.7", default-features = false }

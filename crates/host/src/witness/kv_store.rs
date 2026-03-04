@@ -8,7 +8,8 @@
 mod inner {
     use alloy_primitives::B256;
     use kona_host::KeyValueStore;
-    use std::collections::HashMap;
+    use rkyv::Deserialize;
+    use std::collections::{BTreeMap, HashMap};
     use std::sync::{Arc, Mutex};
 
     /// A key-value store backed by `Arc<Mutex<HashMap>>`, allowing the caller
@@ -60,12 +61,39 @@ mod inner {
         }
     }
 
-    /// Serialize a preimage map to bytes.
+    /// Serialize a preimage map to rkyv bytes.
     ///
-    /// Wire format: repeated `[key: 32 bytes][value_len: 4 bytes LE][value: N bytes]`.
+    /// Produces bytes consumable by `PreimageStore::from_rkyv_bytes()` on the guest side.
+    /// Internally serializes a `BTreeMap<[u8; 32], Vec<u8>>` via rkyv.
     pub fn serialize_preimages(preimages: &HashMap<B256, Vec<u8>>) -> Vec<u8> {
+        let map: BTreeMap<[u8; 32], Vec<u8>> = preimages
+            .iter()
+            .map(|(k, v)| (k.0, v.clone()))
+            .collect();
+        rkyv::to_bytes::<_, 256>(&map)
+            .expect("rkyv serialization failed")
+            .to_vec()
+    }
+
+    /// Deserialize preimages from rkyv bytes produced by [`serialize_preimages`].
+    pub fn deserialize_preimages(data: &[u8]) -> Option<HashMap<B256, Vec<u8>>> {
+        let archived =
+            rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(data).ok()?;
+        let map: BTreeMap<[u8; 32], Vec<u8>> =
+            archived.deserialize(&mut rkyv::Infallible).ok()?;
+        Some(
+            map.into_iter()
+                .map(|(k, v)| (B256::from(k), v))
+                .collect(),
+        )
+    }
+
+    /// Serialize preimages using the legacy wire format.
+    ///
+    /// Wire format: `[count: 4 LE]` repeated `[key: 32][value_len: 4 LE][value: N]`.
+    /// Kept for backward compatibility with `PreimageStore::from_raw_bytes()`.
+    pub fn serialize_preimages_legacy(preimages: &HashMap<B256, Vec<u8>>) -> Vec<u8> {
         let mut buf = Vec::new();
-        // Write entry count first for deterministic deserialization
         buf.extend_from_slice(&(preimages.len() as u32).to_le_bytes());
         for (key, value) in preimages {
             buf.extend_from_slice(key.as_slice());
@@ -75,8 +103,8 @@ mod inner {
         buf
     }
 
-    /// Deserialize preimages from bytes produced by [`serialize_preimages`].
-    pub fn deserialize_preimages(data: &[u8]) -> Option<HashMap<B256, Vec<u8>>> {
+    /// Deserialize preimages from legacy wire format bytes.
+    pub fn deserialize_preimages_legacy(data: &[u8]) -> Option<HashMap<B256, Vec<u8>>> {
         let mut offset = 0;
 
         if offset + 4 > data.len() {
@@ -158,7 +186,7 @@ mod inner {
         }
 
         #[test]
-        fn serialize_deserialize_roundtrip() {
+        fn rkyv_serialize_deserialize_roundtrip() {
             let mut map = HashMap::new();
             map.insert(B256::repeat_byte(0x01), vec![0xDE, 0xAD]);
             map.insert(B256::repeat_byte(0x02), vec![0xBE, 0xEF, 0xCA, 0xFE]);
@@ -171,7 +199,7 @@ mod inner {
         }
 
         #[test]
-        fn serialize_deserialize_empty() {
+        fn rkyv_serialize_deserialize_empty() {
             let map = HashMap::new();
             let serialized = serialize_preimages(&map);
             let deserialized = deserialize_preimages(&serialized).unwrap();
@@ -179,14 +207,26 @@ mod inner {
         }
 
         #[test]
-        fn deserialize_truncated_returns_none() {
-            assert!(deserialize_preimages(&[]).is_none());
-            // Count says 1 entry but no data follows
-            assert!(deserialize_preimages(&[1, 0, 0, 0]).is_none());
+        fn legacy_serialize_deserialize_roundtrip() {
+            let mut map = HashMap::new();
+            map.insert(B256::repeat_byte(0x01), vec![0xDE, 0xAD]);
+            map.insert(B256::repeat_byte(0x02), vec![0xBE, 0xEF, 0xCA, 0xFE]);
+            map.insert(B256::repeat_byte(0x03), vec![]);
+
+            let serialized = serialize_preimages_legacy(&map);
+            let deserialized = deserialize_preimages_legacy(&serialized).unwrap();
+
+            assert_eq!(map, deserialized);
         }
 
         #[test]
-        fn serialize_large_values() {
+        fn legacy_deserialize_truncated_returns_none() {
+            assert!(deserialize_preimages_legacy(&[]).is_none());
+            assert!(deserialize_preimages_legacy(&[1, 0, 0, 0]).is_none());
+        }
+
+        #[test]
+        fn rkyv_serialize_large_values() {
             let mut map = HashMap::new();
             let big_value = vec![0x42; 100_000];
             map.insert(B256::repeat_byte(0xFF), big_value.clone());

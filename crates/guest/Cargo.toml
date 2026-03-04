@@ -8,10 +8,34 @@ description = "Guest-side I/O abstraction for zkVM programs"
 [features]
 sp1 = ["dep:sp1-zkvm", "dep:sha2"]
 risczero = ["dep:risc0-zkvm"]
+kona = ["dep:kona-preimage", "dep:async-trait", "dep:rkyv"]
+pipeline = [
+    "kona",
+    "dep:open-zk-core",
+    "dep:kona-proof",
+    "dep:kona-driver",
+    "dep:kona-derive",
+    "dep:kona-genesis",
+    "dep:alloy-op-evm",
+    "dep:alloy-primitives",
+    "dep:alloy-consensus",
+]
 
 [dependencies]
-open-zk-core = { workspace = true }
+open-zk-core = { workspace = true, optional = true }
 serde = { workspace = true }
 sp1-zkvm = { workspace = true, optional = true, features = ["verify"] }
 sha2 = { version = "0.10", default-features = false, optional = true }
 risc0-zkvm = { workspace = true, optional = true }
+kona-preimage = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+async-trait = { workspace = true, optional = true }
+rkyv = { workspace = true, features = ["alloc", "validation", "size_32"], optional = true }
+
+# Pipeline dependencies (optional, behind "pipeline" feature)
+kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+kona-driver = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+alloy-op-evm = { version = "0.24", default-features = false, optional = true }
+alloy-primitives = { workspace = true, default-features = false, optional = true }
+alloy-consensus = { version = "1", default-features = false, optional = true }

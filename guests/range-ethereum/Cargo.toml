@@ -1,0 +1,32 @@
+[package]
+name = "guest-range-ethereum"
+version = "0.1.0"
+edition = "2021"
+
+# This crate is NOT a workspace member.
+# It is compiled separately for zkVM targets:
+#   SP1:       cd guests/range-ethereum && cargo prove build --features sp1
+#   RISC Zero: cd guests/range-ethereum && cargo risczero build --features risczero
+
+[features]
+sp1 = ["open-zk-guest/sp1", "dep:sp1-zkvm"]
+risczero = ["open-zk-guest/risczero", "dep:risc0-zkvm"]
+
+[dependencies]
+open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }
+open-zk-core = { path = "../../crates/core", default-features = false }
+alloy-primitives = { version = "1", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
+
+# Kona — only types needed for DaSourceFactory impl
+kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
+
+# zkVM backends
+sp1-zkvm = { version = "6", optional = true }
+risc0-zkvm = { version = "3", optional = true }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
