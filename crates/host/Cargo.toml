@@ -1,0 +1,17 @@
+[package]
+name = "open-zk-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Host-side prover backends and witness generation"
+
+[dependencies]
+open-zk-core = { workspace = true }
+alloy-primitives = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

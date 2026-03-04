@@ -1,0 +1,17 @@
+[package]
+name = "open-zk-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core traits and types for the open-zk SDK (no_std compatible)"
+
+[features]
+default = ["std"]
+std = ["alloy-primitives/std", "serde/std"]
+
+[dependencies]
+alloy-primitives = { workspace = true, default-features = false }
+alloy-sol-types = { workspace = true }
+serde = { workspace = true, default-features = false }
+async-trait = { workspace = true }
+thiserror = { workspace = true }

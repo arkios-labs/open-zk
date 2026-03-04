@@ -1,0 +1,16 @@
+[package]
+name = "open-zk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Open-ZK: Unified ZK proving SDK for OP Stack rollups"
+
+[dependencies]
+open-zk-core = { workspace = true }
+open-zk-host = { workspace = true }
+open-zk-orchestrator = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

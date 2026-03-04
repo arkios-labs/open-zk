@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/sdk",
+    "crates/guest",
+    "crates/host",
+    "crates/orchestrator",
+    "crates/contracts",
+    "crates/cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/open-zk/open-zk"
+
+[workspace.dependencies]
+# Internal crates
+open-zk = { path = "crates/sdk" }
+open-zk-core = { path = "crates/core" }
+open-zk-guest = { path = "crates/guest" }
+open-zk-host = { path = "crates/host" }
+open-zk-orchestrator = { path = "crates/orchestrator" }
+open-zk-contracts = { path = "crates/contracts" }
+open-zk-cli = { path = "crates/cli" }
+
+# Ethereum / Alloy
+alloy-primitives = { version = "1", default-features = false, features = ["serde"] }
+alloy-sol-types = "1"
+
+# Serialization
+serde = { version = "1", default-features = false, features = ["derive"] }
+
+# Async
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
