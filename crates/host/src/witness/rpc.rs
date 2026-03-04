@@ -6,7 +6,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use alloy_primitives::B256;
+use alloy_primitives::{keccak256, B256};
+use alloy_provider::{Provider, ProviderBuilder};
+use alloy_rpc_types_eth::BlockNumberOrTag;
 use async_trait::async_trait;
 use kona_host::single::{SingleChainHintHandler, SingleChainHost, SingleChainLocalInputs};
 use kona_host::{
@@ -17,7 +19,7 @@ use open_zk_core::traits::{RawWitness, WitnessProvider};
 use open_zk_core::types::BootInfo;
 use open_zk_core::types::ProofRequest;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{debug, info};
 
 use super::kv_store::{serialize_preimages, ArcMemoryKvStore};
 
@@ -100,6 +102,92 @@ impl RpcWitnessProvider {
             data_dir: None, // Use in-memory KV store
             ..Default::default()
         }
+    }
+
+    /// Compute a hash of the rollup config for the guest BootInfo.
+    ///
+    /// If a rollup config path is provided, reads and hashes its JSON contents.
+    /// Otherwise returns `B256::ZERO` (rollup config fetched at runtime).
+    fn compute_rollup_config_hash(&self) -> Result<B256, RpcWitnessError> {
+        match &self.rollup_config_path {
+            Some(path) => {
+                let contents = std::fs::read(path).map_err(|e| {
+                    RpcWitnessError::Fetch(format!(
+                        "failed to read rollup config at {}: {e}",
+                        path.display()
+                    ))
+                })?;
+                // Normalize JSON: parse and re-serialize to get canonical form
+                let value: serde_json::Value =
+                    serde_json::from_slice(&contents).map_err(|e| {
+                        RpcWitnessError::Fetch(format!("invalid rollup config JSON: {e}"))
+                    })?;
+                let canonical =
+                    serde_json::to_vec(&value).map_err(|e| {
+                        RpcWitnessError::Serialization(format!(
+                            "rollup config serialization: {e}"
+                        ))
+                    })?;
+                Ok(keccak256(&canonical))
+            }
+            None => {
+                // No static rollup config — hash will be determined at runtime
+                debug!("no rollup config path set, using zero hash");
+                Ok(B256::ZERO)
+            }
+        }
+    }
+
+    /// Fetch the L2 output root at a given block number.
+    ///
+    /// Tries `optimism_outputAtBlock` RPC first. If that fails, falls back to
+    /// computing the output root from block header fields:
+    /// `output_root = keccak256(version ++ state_root ++ withdrawals_root ++ block_hash)`
+    async fn fetch_output_root(
+        &self,
+        l2_provider: &impl Provider,
+        block_number: u64,
+    ) -> Result<B256, RpcWitnessError> {
+        // Try optimism_outputAtBlock RPC
+        let rpc_result: Result<serde_json::Value, _> = l2_provider
+            .raw_request(
+                "optimism_outputAtBlock".into(),
+                [format!("0x{:x}", block_number)],
+            )
+            .await;
+
+        if let Ok(resp) = rpc_result {
+            if let Some(root_str) = resp.get("outputRoot").and_then(|v| v.as_str()) {
+                if let Ok(root) = root_str.parse::<B256>() {
+                    debug!(block = block_number, output_root = %root, "fetched output root via RPC");
+                    return Ok(root);
+                }
+            }
+        }
+
+        // Fallback: derive from block header
+        debug!(
+            block = block_number,
+            "optimism_outputAtBlock unavailable, deriving from block header"
+        );
+        let block = l2_provider
+            .get_block_by_number(BlockNumberOrTag::Number(block_number))
+            .await
+            .map_err(|e| RpcWitnessError::Fetch(format!("L2 block {block_number}: {e}")))?
+            .ok_or_else(|| {
+                RpcWitnessError::Fetch(format!("L2 block {block_number} not found"))
+            })?;
+
+        // output_root = keccak256(version_byte[32] ++ state_root ++ withdrawals_root ++ block_hash)
+        let mut payload = [0u8; 128];
+        // bytes 0..32: version (zero)
+        payload[32..64].copy_from_slice(block.header.state_root.as_slice());
+        let withdrawals_root = block.header.withdrawals_root.unwrap_or(B256::ZERO);
+        payload[64..96].copy_from_slice(withdrawals_root.as_slice());
+        payload[96..128].copy_from_slice(block.header.hash.as_slice());
+        let root = keccak256(payload);
+        debug!(block = block_number, output_root = %root, "derived output root from block header");
+        Ok(root)
     }
 
     /// Run the kona witness collection pipeline.
@@ -201,19 +289,45 @@ impl WitnessProvider for RpcWitnessProvider {
         request: &ProofRequest,
     ) -> Result<RawWitness, Self::Error> {
         // Pre-flight: fetch L2 head hash and claimed output root from L2 node.
-        //
-        // These values are needed to configure SingleChainHost:
-        // - agreed_l2_head_hash: block hash at l2_start_block
-        // - claimed_l2_output_root: output root at l2_end_block (derived from L2 node)
-        //
-        // TODO: Make actual RPC calls to fetch these values.
-        // For now, these must be provided externally or fetched before calling.
-        // In production, this would use alloy provider:
-        //   let l2_provider = ProviderBuilder::new().on_http(l2_rpc_url);
-        //   let start_block = l2_provider.get_block_by_number(l2_start_block).await?;
-        //   let end_block = l2_provider.get_block_by_number(l2_end_block).await?;
-        let agreed_l2_head_hash = B256::ZERO; // TODO: fetch from L2 RPC
-        let claimed_l2_output_root = B256::ZERO; // TODO: fetch from L2 RPC
+        let l2_url: url::Url = self
+            .l2_rpc_url
+            .parse()
+            .map_err(|e| RpcWitnessError::Connection(format!("invalid L2 URL: {e}")))?;
+        let l2_provider = ProviderBuilder::new().connect_http(l2_url);
+
+        // 1. Fetch block hash at l2_start_block (agreed L2 head)
+        let start_block = l2_provider
+            .get_block_by_number(BlockNumberOrTag::Number(request.l2_start_block))
+            .await
+            .map_err(|e| RpcWitnessError::Fetch(format!("L2 start block: {e}")))?
+            .ok_or_else(|| {
+                RpcWitnessError::Fetch(format!(
+                    "L2 block {} not found",
+                    request.l2_start_block
+                ))
+            })?;
+        let agreed_l2_head_hash = start_block.header.hash;
+        debug!(
+            block = request.l2_start_block,
+            hash = %agreed_l2_head_hash,
+            "fetched L2 start block hash"
+        );
+
+        // 2. Fetch output root at l2_end_block.
+        //    Try OP Stack's `optimism_outputAtBlock` RPC first, then fall back to
+        //    computing output_root = keccak256(version ++ state_root ++ withdrawals_root ++ block_hash).
+        let claimed_l2_output_root = self
+            .fetch_output_root(&l2_provider, request.l2_end_block)
+            .await?;
+
+        debug!(
+            block = request.l2_end_block,
+            output_root = %claimed_l2_output_root,
+            "determined L2 claimed output root"
+        );
+
+        // 3. Compute rollup config hash
+        let rollup_config_hash = self.compute_rollup_config_hash()?;
 
         // Build kona host configuration
         let host = self.build_host_config(request, agreed_l2_head_hash, claimed_l2_output_root);
@@ -231,7 +345,7 @@ impl WitnessProvider for RpcWitnessProvider {
             l2_pre_root: request.l2_start_output_root,
             l2_claim: claimed_l2_output_root,
             l2_block_number: request.l2_end_block,
-            rollup_config_hash: B256::ZERO, // TODO: compute from rollup config
+            rollup_config_hash,
         };
 
         Ok(RawWitness {
