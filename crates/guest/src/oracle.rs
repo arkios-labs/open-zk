@@ -16,6 +16,8 @@ use alloc::vec::Vec;
 use async_trait::async_trait;
 use kona_preimage::errors::{PreimageOracleError, PreimageOracleResult};
 use kona_preimage::{HintWriterClient, PreimageKey, PreimageOracleClient};
+use rkyv::Deserialize as _;
+
 
 /// Preimage store backed by host-provided data.
 ///
@@ -24,7 +26,7 @@ use kona_preimage::{HintWriterClient, PreimageKey, PreimageOracleClient};
 /// when `Clone` is also implemented.
 ///
 /// Internally wraps data in `Arc` so clones are cheap.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PreimageStore {
     data: Arc<BTreeMap<[u8; 32], Vec<u8>>>,
 }

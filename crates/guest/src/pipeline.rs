@@ -10,14 +10,15 @@ use alloc::sync::Arc;
 use alloy_consensus::Sealed;
 use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::B256;
-use kona_derive::{DataAvailabilityProvider, L2ChainProvider};
+use kona_derive::DataAvailabilityProvider;
+use kona_executor::TrieDBProvider;
 use kona_driver::Driver;
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_proof::l1::{OracleL1ChainProvider, OraclePipeline};
 use kona_proof::l2::OracleL2ChainProvider;
 use kona_proof::sync::new_oracle_pipeline_cursor;
 use kona_proof::{BootInfo, CachingOracle, HintType};
-use open_zk_core::traits::{ZkvmReader, ZkvmWriter};
+use open_zk_core::traits::ZkvmWriter;
 use open_zk_core::types::StateTransitionJournal;
 
 use crate::oracle::PreimageStore;
@@ -200,8 +201,7 @@ async fn fetch_safe_head_hash<O: CommsClient>(
     HintType::StartingL2Output
         .with_data(&[agreed_l2_output_root.as_ref()])
         .send(oracle)
-        .await
-        .map_err(kona_proof::errors::OracleProviderError::Preimage)?;
+        .await?;
     oracle
         .get_exact(
             PreimageKey::new(*agreed_l2_output_root, PreimageKeyType::Keccak256),

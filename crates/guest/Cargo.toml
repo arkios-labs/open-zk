@@ -15,6 +15,7 @@ pipeline = [
     "dep:kona-proof",
     "dep:kona-driver",
     "dep:kona-derive",
+    "dep:kona-executor",
     "dep:kona-genesis",
     "dep:alloy-op-evm",
     "dep:alloy-primitives",
@@ -35,6 +36,7 @@ rkyv = { workspace = true, features = ["alloc", "validation", "size_32"], option
 kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
 kona-driver = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
 kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
+kona-executor = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
 kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, optional = true }
 alloy-op-evm = { version = "0.24", default-features = false, optional = true }
 alloy-primitives = { workspace = true, default-features = false, optional = true }
