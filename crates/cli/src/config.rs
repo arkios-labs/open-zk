@@ -111,6 +111,19 @@ impl CliConfig {
             .map_err(|e| anyhow::anyhow!("config error: {}", e))
     }
 
+    /// Check if mock proving mode is active.
+    ///
+    /// Mock mode is enabled when:
+    /// - `backend = "mock"` in the config, OR
+    /// - `SP1_PROVER=mock` environment variable is set
+    ///
+    /// In mock mode, proofs are generated instantly without real ZK computation.
+    /// This is useful for devnet testing and CI pipelines.
+    pub fn is_mock_mode(&self) -> bool {
+        self.proving.backend == "mock"
+            || std::env::var("SP1_PROVER").is_ok_and(|v| v == "mock")
+    }
+
     /// Generate a default TOML config string.
     pub fn default_toml() -> String {
         let config = Self {
@@ -172,5 +185,36 @@ max_concurrent_proofs = 4
         let toml_str = CliConfig::default_toml();
         let parsed: CliConfig = toml::from_str(&toml_str).unwrap();
         assert_eq!(parsed.proving.backend, "sp1");
+    }
+
+    #[test]
+    fn mock_mode_from_backend_config() {
+        let config = CliConfig {
+            network: NetworkConfig {
+                l1_rpc_url: "http://l1:8545".to_string(),
+                l2_rpc_url: "http://l2:9545".to_string(),
+                l1_beacon_url: "http://beacon:5052".to_string(),
+            },
+            proving: ProvingConfig {
+                backend: "mock".to_string(),
+                ..ProvingConfig::default()
+            },
+        };
+        assert!(config.is_mock_mode());
+    }
+
+    #[test]
+    fn non_mock_mode_by_default() {
+        let config = CliConfig {
+            network: NetworkConfig {
+                l1_rpc_url: "http://l1:8545".to_string(),
+                l2_rpc_url: "http://l2:9545".to_string(),
+                l1_beacon_url: "http://beacon:5052".to_string(),
+            },
+            proving: ProvingConfig::default(),
+        };
+        // Only true if SP1_PROVER=mock env var is NOT set
+        // (we can't control env in this test, so just verify config-based detection)
+        assert!(!config.is_mock_mode() || std::env::var("SP1_PROVER").is_ok_and(|v| v == "mock"));
     }
 }

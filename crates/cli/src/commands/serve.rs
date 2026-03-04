@@ -20,11 +20,13 @@ pub async fn execute(args: ServeArgs) -> anyhow::Result<()> {
     let config = CliConfig::from_file(&args.config)?;
     let sdk_config = config.to_sdk_config()?;
     let intent = sdk_config.resolve();
+    let mock_mode = config.is_mock_mode();
 
     info!(
         mode = ?intent.proof_mode,
         backend = ?intent.backend,
         poll_interval = args.poll_interval,
+        mock_mode,
         "starting open-zk service"
     );
 
@@ -32,6 +34,9 @@ pub async fn execute(args: ServeArgs) -> anyhow::Result<()> {
     println!("Mode: {:?}", intent.proof_mode);
     println!("Backend: {:?}", intent.backend);
     println!("Poll interval: {}s", args.poll_interval);
+    if mock_mode {
+        println!("Mock mode: ENABLED (no real ZK proofs)");
+    }
     println!();
 
     // TODO: Wire up the OrchestrationEngine:

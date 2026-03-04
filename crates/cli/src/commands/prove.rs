@@ -24,12 +24,14 @@ pub async fn execute(args: ProveArgs) -> anyhow::Result<()> {
     let config = CliConfig::from_file(&args.config)?;
     let sdk_config = config.to_sdk_config()?;
     let intent = sdk_config.resolve();
+    let mock_mode = config.is_mock_mode();
 
     info!(
         start = args.start_block,
         end = args.end_block,
         mode = ?intent.proof_mode,
         backend = ?intent.backend,
+        mock_mode,
         "starting proof generation"
     );
 
