@@ -42,3 +42,8 @@ thiserror = "2"
 
 # Logging
 tracing = "0.1"
+
+# zkVM backends (optional, behind feature flags)
+sp1-sdk = "6"
+sp1-zkvm = "6"
+risc0-zkvm = "3"
