@@ -7,13 +7,17 @@
 use alloy_primitives::B256;
 use open_zk::core::traits::{ProverBackend, WitnessProvider};
 use open_zk::core::types::{
-    ProofMode, ProvingMode, SecurityLevel, StateTransitionJournal, ZkvmBackend,
+    BootInfo, ProofMode, ProvingMode, SecurityLevel, StateTransitionJournal, ZkvmBackend,
 };
 use open_zk::OpenZkConfig;
+use open_zk_contracts::client::{MockProofSubmitter, ProofSubmitter};
 use open_zk_host::prover::{MockProgram, MockProverBackend, MockWitness};
 use open_zk_host::witness::MockWitnessProvider;
 use open_zk_orchestrator::mock_monitor::MockMonitor;
-use open_zk_orchestrator::{ChainMonitor, ChainState, EngineConfig, OrchestrationEngine};
+use open_zk_orchestrator::{
+    ChainMonitor, ChainState, EngineConfig, EngineEvent, MockDispatcher, OrchestrationEngine,
+    ProofDispatcher,
+};
 use std::time::{Duration, SystemTime};
 
 fn test_state() -> ChainState {
@@ -56,7 +60,7 @@ async fn test_full_pipeline_config_to_proof() {
         poll_interval: Duration::from_secs(10),
         max_concurrent_proofs: 4,
     };
-    let engine = OrchestrationEngine::new(engine_config, monitor);
+    let engine = OrchestrationEngine::new(engine_config, monitor, MockDispatcher);
 
     // Step 3: Get pending range and plan
     let pending_monitor = MockMonitor {
@@ -188,10 +192,151 @@ async fn test_economy_config_resolves_sentinel() {
         poll_interval: Duration::from_secs(60),
         max_concurrent_proofs: 1,
     };
-    let engine = OrchestrationEngine::new(engine_config, monitor);
+    let engine = OrchestrationEngine::new(engine_config, monitor, MockDispatcher);
 
     let requests = engine.plan_range(501, 750, &state);
     assert_eq!(requests.len(), 1);
     assert_eq!(requests[0].l2_start_block, 501);
     assert_eq!(requests[0].l2_end_block, 750);
+}
+
+/// E2E: Config → resolve → engine → dispatcher → proof → contract submitter.
+#[tokio::test]
+async fn test_full_pipeline_with_dispatcher_and_submitter() {
+    // Step 1: Config
+    let config = OpenZkConfig::builder()
+        .target_finality(Duration::from_secs(600))
+        .max_cost_per_proof(0.50)
+        .security(SecurityLevel::Standard)
+        .l1_rpc_url("http://localhost:8545")
+        .l2_rpc_url("http://localhost:9545")
+        .l1_beacon_url("http://localhost:5052")
+        .build()
+        .unwrap();
+
+    let intent = config.resolve();
+    let state = test_state();
+
+    // Step 2: Engine with dispatcher
+    let monitor = MockMonitor {
+        state: state.clone(),
+    };
+    let engine_config = EngineConfig {
+        intent,
+        poll_interval: Duration::from_secs(10),
+        max_concurrent_proofs: 4,
+    };
+    let engine = OrchestrationEngine::new(engine_config, monitor, MockDispatcher);
+
+    // Step 3: Plan range
+    let requests = engine.plan_range(501, 750, &state);
+    assert_eq!(requests.len(), 3);
+
+    // Step 4: Dispatch via MockDispatcher
+    let dispatcher = MockDispatcher;
+    for request in &requests {
+        let handle = dispatcher.submit(request.clone()).await.unwrap();
+        let proof = dispatcher.wait(&handle).await.unwrap();
+        assert_eq!(proof.backend, ZkvmBackend::Mock);
+
+        // Step 5: Submit via MockProofSubmitter
+        let journal = StateTransitionJournal {
+            l1_head: request.l1_head,
+            l2_pre_root: request.l2_start_output_root,
+            l2_post_root: B256::repeat_byte(0xFF),
+            l2_block_number: request.l2_end_block,
+            rollup_config_hash: B256::ZERO,
+            program_id: B256::ZERO,
+        };
+
+        let submitter = MockProofSubmitter;
+        let tx_hash = submitter.submit_proof(&journal, &proof).await.unwrap();
+        assert_eq!(tx_hash, B256::ZERO);
+    }
+}
+
+/// E2E: Engine beacon loop emits correct event sequence via dispatcher.
+#[tokio::test]
+async fn test_engine_beacon_loop_with_events() {
+    let state = test_state();
+    let monitor = MockMonitor {
+        state: state.clone(),
+    };
+    let config = EngineConfig {
+        intent: open_zk_orchestrator::ResolvedIntent {
+            proof_mode: ProofMode::Beacon,
+            backend: ZkvmBackend::Sp1,
+            proving_mode: ProvingMode::Groth16,
+            aggregation_window: 100,
+        },
+        poll_interval: Duration::from_secs(10),
+        max_concurrent_proofs: 4,
+    };
+
+    let mut engine = OrchestrationEngine::new(config, monitor, MockDispatcher);
+    let mut rx = engine.take_event_receiver();
+
+    let handle = tokio::spawn(async move {
+        let _ = engine.run().await;
+    });
+
+    // Collect events
+    let mut events = Vec::new();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+    loop {
+        tokio::select! {
+            Some(event) = rx.recv() => {
+                events.push(event);
+                if events.iter().any(|e| matches!(e, EngineEvent::AggregationCompleted { .. })) {
+                    break;
+                }
+            }
+            _ = tokio::time::sleep_until(deadline) => { break; }
+        }
+    }
+    handle.abort();
+
+    // Verify event flow: RangeDetected → 3x(ProofStarted, ProofCompleted) → AggregationStarted → AggregationCompleted
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, EngineEvent::RangeDetected { .. })));
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, EngineEvent::AggregationCompleted { .. })));
+
+    let starts = events
+        .iter()
+        .filter(|e| matches!(e, EngineEvent::ProofStarted { .. }))
+        .count();
+    assert_eq!(starts, 3);
+}
+
+/// BootInfo ABI roundtrip in E2E context.
+#[test]
+fn test_boot_info_in_pipeline_context() {
+    let boot = BootInfo {
+        l1_head: B256::repeat_byte(0x01),
+        l2_pre_root: B256::repeat_byte(0x02),
+        l2_claim: B256::repeat_byte(0x03),
+        l2_block_number: 750,
+        rollup_config_hash: B256::repeat_byte(0x04),
+    };
+
+    let bytes = boot.to_abi_bytes();
+    let decoded = BootInfo::from_abi_bytes(&bytes).unwrap();
+    assert_eq!(boot, decoded);
+
+    // Verify boot info maps to journal fields
+    let journal = StateTransitionJournal {
+        l1_head: decoded.l1_head,
+        l2_pre_root: decoded.l2_pre_root,
+        l2_post_root: decoded.l2_claim,
+        l2_block_number: decoded.l2_block_number,
+        rollup_config_hash: decoded.rollup_config_hash,
+        program_id: B256::ZERO,
+    };
+
+    let journal_bytes = journal.to_abi_bytes();
+    let journal_decoded = StateTransitionJournal::from_abi_bytes(&journal_bytes).unwrap();
+    assert_eq!(journal, journal_decoded);
 }

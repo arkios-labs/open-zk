@@ -2,6 +2,8 @@ use alloy_primitives::B256;
 use async_trait::async_trait;
 use std::time::SystemTime;
 
+use crate::engine::DisputeInfo;
+
 /// Snapshot of L1/L2 chain state at a point in time.
 #[derive(Debug, Clone)]
 pub struct ChainState {
@@ -34,5 +36,10 @@ pub trait ChainMonitor: Send + Sync {
         } else {
             Ok(None)
         }
+    }
+
+    /// Returns an active dispute if one exists. Default returns None.
+    async fn active_dispute(&self) -> Option<DisputeInfo> {
+        None
     }
 }

@@ -1,3 +1,4 @@
+use crate::dispatcher::ProofDispatcher;
 use crate::intent::ResolvedIntent;
 use crate::monitor::{ChainMonitor, ChainState};
 use open_zk_core::types::{ProofMode, ProofRequest};
@@ -16,6 +17,15 @@ pub struct EngineConfig {
     pub max_concurrent_proofs: usize,
 }
 
+/// Information about an active dispute.
+#[derive(Debug, Clone)]
+pub struct DisputeInfo {
+    /// Start block of the disputed range.
+    pub start_block: u64,
+    /// End block of the disputed range.
+    pub end_block: u64,
+}
+
 /// Events emitted by the orchestration engine.
 #[derive(Debug, Clone)]
 pub enum EngineEvent {
@@ -27,6 +37,14 @@ pub enum EngineEvent {
     ProofCompleted { start: u64, end: u64 },
     /// Proof submitted on-chain.
     ProofSubmitted { start: u64, end: u64 },
+    /// Aggregation of range proofs started.
+    AggregationStarted { num_proofs: usize },
+    /// Aggregation completed.
+    AggregationCompleted { start: u64, end: u64 },
+    /// A dispute has been detected.
+    DisputeDetected { start: u64, end: u64 },
+    /// A dispute has been resolved.
+    DisputeResolved { start: u64, end: u64 },
     /// Error during proving or submission.
     Error { message: String },
 }
@@ -36,19 +54,21 @@ pub enum EngineEvent {
 /// Operates in two modes based on the resolved intent:
 /// - **Beacon**: continuously proves every block range and submits proofs.
 /// - **Sentinel**: monitors for disputes and proves only when challenged.
-pub struct OrchestrationEngine<M: ChainMonitor> {
+pub struct OrchestrationEngine<M: ChainMonitor, D: ProofDispatcher> {
     config: EngineConfig,
     monitor: M,
+    dispatcher: D,
     event_tx: mpsc::UnboundedSender<EngineEvent>,
     event_rx: mpsc::UnboundedReceiver<EngineEvent>,
 }
 
-impl<M: ChainMonitor> OrchestrationEngine<M> {
-    pub fn new(config: EngineConfig, monitor: M) -> Self {
+impl<M: ChainMonitor, D: ProofDispatcher> OrchestrationEngine<M, D> {
+    pub fn new(config: EngineConfig, monitor: M, dispatcher: D) -> Self {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         Self {
             config,
             monitor,
+            dispatcher,
             event_tx,
             event_rx,
         }
@@ -60,15 +80,16 @@ impl<M: ChainMonitor> OrchestrationEngine<M> {
     }
 
     /// Take ownership of the event receiver for consuming events.
+    ///
+    /// After calling this, the caller receives all events emitted by `run()`.
+    /// A new internal receiver is created (unused) to maintain struct invariants.
     pub fn take_event_receiver(&mut self) -> mpsc::UnboundedReceiver<EngineEvent> {
-        let (new_tx, new_rx) = mpsc::unbounded_channel();
-        let old_rx = std::mem::replace(&mut self.event_rx, new_rx);
-        self.event_tx = new_tx;
-        old_rx
+        let (_placeholder_tx, placeholder_rx) = mpsc::unbounded_channel();
+        std::mem::replace(&mut self.event_rx, placeholder_rx)
     }
 
     /// Run the engine loop. Blocks until cancelled.
-    pub async fn run(&self) -> Result<(), M::Error> {
+    pub async fn run(&self) -> Result<(), EngineError> {
         match self.config.intent.proof_mode {
             ProofMode::Beacon => self.run_beacon_loop().await,
             ProofMode::Sentinel => self.run_sentinel_loop().await,
@@ -76,34 +97,79 @@ impl<M: ChainMonitor> OrchestrationEngine<M> {
     }
 
     /// Beacon mode: continuously prove every new block range.
-    async fn run_beacon_loop(&self) -> Result<(), M::Error> {
+    async fn run_beacon_loop(&self) -> Result<(), EngineError> {
         info!("starting beacon mode loop");
 
         loop {
-            match self.monitor.pending_range().await? {
+            let range = self
+                .monitor
+                .pending_range()
+                .await
+                .map_err(|e| EngineError::Monitor(e.to_string()))?;
+
+            match range {
                 Some((start, end)) => {
-                    let _ = self.event_tx.send(EngineEvent::RangeDetected { start, end });
+                    let _ = self
+                        .event_tx
+                        .send(EngineEvent::RangeDetected { start, end });
 
-                    // Split range into aggregation windows
-                    let window = self.config.intent.aggregation_window;
-                    let mut cursor = start;
+                    let state = self
+                        .monitor
+                        .get_state()
+                        .await
+                        .map_err(|e| EngineError::Monitor(e.to_string()))?;
+                    let requests = self.plan_range(start, end, &state);
 
-                    while cursor <= end {
-                        let range_end = (cursor + window - 1).min(end);
+                    // Dispatch all range proofs
+                    let mut range_proofs = Vec::new();
+                    for request in &requests {
                         let _ = self.event_tx.send(EngineEvent::ProofStarted {
-                            start: cursor,
-                            end: range_end,
+                            start: request.l2_start_block,
+                            end: request.l2_end_block,
                         });
 
-                        // Phase 4 TODO: dispatch actual proof generation
-                        // via ProverBackend::prove() with proper witness
+                        let handle = self
+                            .dispatcher
+                            .submit(request.clone())
+                            .await
+                            .map_err(|e| EngineError::Dispatch(e.to_string()))?;
+
+                        let proof = self
+                            .dispatcher
+                            .wait(&handle)
+                            .await
+                            .map_err(|e| EngineError::Dispatch(e.to_string()))?;
 
                         let _ = self.event_tx.send(EngineEvent::ProofCompleted {
-                            start: cursor,
-                            end: range_end,
+                            start: request.l2_start_block,
+                            end: request.l2_end_block,
                         });
 
-                        cursor = range_end + 1;
+                        range_proofs.push(proof);
+                    }
+
+                    // Aggregate if more than one range proof
+                    if range_proofs.len() > 1 {
+                        let num = range_proofs.len();
+                        let _ = self
+                            .event_tx
+                            .send(EngineEvent::AggregationStarted { num_proofs: num });
+
+                        let agg_handle = self
+                            .dispatcher
+                            .submit_aggregation(range_proofs)
+                            .await
+                            .map_err(|e| EngineError::Dispatch(e.to_string()))?;
+
+                        let _agg_proof = self
+                            .dispatcher
+                            .wait(&agg_handle)
+                            .await
+                            .map_err(|e| EngineError::Dispatch(e.to_string()))?;
+
+                        let _ = self
+                            .event_tx
+                            .send(EngineEvent::AggregationCompleted { start, end });
                     }
                 }
                 None => {
@@ -116,15 +182,45 @@ impl<M: ChainMonitor> OrchestrationEngine<M> {
     }
 
     /// Sentinel mode: watch for disputes and prove on demand.
-    async fn run_sentinel_loop(&self) -> Result<(), M::Error> {
+    async fn run_sentinel_loop(&self) -> Result<(), EngineError> {
         info!("starting sentinel mode loop");
 
         loop {
-            // Phase 4 TODO: monitor dispute game contract for challenges
-            // When a dispute is detected:
-            // 1. Determine the disputed block range
-            // 2. Generate proof for that range
-            // 3. Submit proof to resolve the dispute
+            let dispute = self.monitor.active_dispute().await;
+
+            if let Some(dispute) = dispute {
+                let _ = self.event_tx.send(EngineEvent::DisputeDetected {
+                    start: dispute.start_block,
+                    end: dispute.end_block,
+                });
+
+                let state = self
+                    .monitor
+                    .get_state()
+                    .await
+                    .map_err(|e| EngineError::Monitor(e.to_string()))?;
+
+                let requests = self.plan_range(dispute.start_block, dispute.end_block, &state);
+
+                for request in &requests {
+                    let handle = self
+                        .dispatcher
+                        .submit(request.clone())
+                        .await
+                        .map_err(|e| EngineError::Dispatch(e.to_string()))?;
+
+                    let _proof = self
+                        .dispatcher
+                        .wait(&handle)
+                        .await
+                        .map_err(|e| EngineError::Dispatch(e.to_string()))?;
+                }
+
+                let _ = self.event_tx.send(EngineEvent::DisputeResolved {
+                    start: dispute.start_block,
+                    end: dispute.end_block,
+                });
+            }
 
             tokio::time::sleep(self.config.poll_interval).await;
         }
@@ -154,9 +250,19 @@ impl<M: ChainMonitor> OrchestrationEngine<M> {
     }
 }
 
+/// Errors from the orchestration engine.
+#[derive(Debug, thiserror::Error)]
+pub enum EngineError {
+    #[error("monitor error: {0}")]
+    Monitor(String),
+    #[error("dispatch error: {0}")]
+    Dispatch(String),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dispatcher::MockDispatcher;
     use crate::monitor::ChainState;
     use alloy_primitives::B256;
     use open_zk_core::types::{ProofMode, ProvingMode, ZkvmBackend};
@@ -208,7 +314,7 @@ mod tests {
         let monitor = MockMonitor {
             state: test_state(),
         };
-        let engine = OrchestrationEngine::new(config, monitor);
+        let engine = OrchestrationEngine::new(config, monitor, MockDispatcher);
         let state = test_state();
 
         let requests = engine.plan_range(501, 750, &state);
@@ -229,7 +335,7 @@ mod tests {
         let monitor = MockMonitor {
             state: test_state(),
         };
-        let engine = OrchestrationEngine::new(config, monitor);
+        let engine = OrchestrationEngine::new(config, monitor, MockDispatcher);
         let state = test_state();
 
         let requests = engine.plan_range(100, 200, &state);
