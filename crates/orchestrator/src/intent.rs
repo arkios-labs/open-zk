@@ -1,11 +1,11 @@
-use open_zk_core::types::{ProofMode, ProvingMode, SecurityLevel, ZkVmBackend};
+use open_zk_core::types::{ProofMode, ProvingMode, SecurityLevel, ZkvmBackend};
 use std::time::Duration;
 
 /// Resolved intent: concrete decisions from user-declared constraints.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedIntent {
     pub proof_mode: ProofMode,
-    pub backend: ZkVmBackend,
+    pub backend: ZkvmBackend,
     pub proving_mode: ProvingMode,
     pub aggregation_window: u64,
 }
@@ -28,17 +28,17 @@ impl IntentResolver {
         security: SecurityLevel,
     ) -> ResolvedIntent {
         let (proof_mode, backend) = match security {
-            SecurityLevel::Maximum => (ProofMode::Beacon, ZkVmBackend::Sp1),
-            SecurityLevel::Economy => (ProofMode::Sentinel, ZkVmBackend::RiscZero),
+            SecurityLevel::Maximum => (ProofMode::Beacon, ZkvmBackend::Sp1),
+            SecurityLevel::Economy => (ProofMode::Sentinel, ZkvmBackend::RiscZero),
             SecurityLevel::Standard => {
                 if target_finality <= Duration::from_secs(30 * 60) {
                     if max_cost_per_proof >= 0.50 {
-                        (ProofMode::Beacon, ZkVmBackend::Sp1)
+                        (ProofMode::Beacon, ZkvmBackend::Sp1)
                     } else {
-                        (ProofMode::Beacon, ZkVmBackend::RiscZero)
+                        (ProofMode::Beacon, ZkvmBackend::RiscZero)
                     }
                 } else {
-                    (ProofMode::Sentinel, ZkVmBackend::RiscZero)
+                    (ProofMode::Sentinel, ZkvmBackend::RiscZero)
                 }
             }
         };
@@ -70,7 +70,7 @@ mod tests {
             SecurityLevel::Maximum,
         );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkVmBackend::Sp1);
+        assert_eq!(result.backend, ZkvmBackend::Sp1);
         assert_eq!(result.aggregation_window, 10);
     }
 
@@ -82,7 +82,7 @@ mod tests {
             SecurityLevel::Economy,
         );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
-        assert_eq!(result.backend, ZkVmBackend::RiscZero);
+        assert_eq!(result.backend, ZkvmBackend::RiscZero);
         assert_eq!(result.aggregation_window, 1000);
     }
 
@@ -94,7 +94,7 @@ mod tests {
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkVmBackend::Sp1);
+        assert_eq!(result.backend, ZkvmBackend::Sp1);
         assert_eq!(result.aggregation_window, 100);
     }
 
@@ -106,7 +106,7 @@ mod tests {
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkVmBackend::RiscZero);
+        assert_eq!(result.backend, ZkvmBackend::RiscZero);
     }
 
     #[test]
@@ -117,6 +117,6 @@ mod tests {
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
-        assert_eq!(result.backend, ZkVmBackend::RiscZero);
+        assert_eq!(result.backend, ZkvmBackend::RiscZero);
     }
 }

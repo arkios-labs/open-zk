@@ -95,7 +95,7 @@ impl OpenZkConfigBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use open_zk_core::types::{ProofMode, ZkVmBackend};
+    use open_zk_core::types::{ProofMode, ZkvmBackend};
 
     #[test]
     fn build_config_and_resolve() {
@@ -111,7 +111,7 @@ mod tests {
 
         let resolved = config.resolve();
         assert_eq!(resolved.proof_mode, ProofMode::Beacon);
-        assert_eq!(resolved.backend, ZkVmBackend::Sp1);
+        assert_eq!(resolved.backend, ZkvmBackend::Sp1);
     }
 
     #[test]

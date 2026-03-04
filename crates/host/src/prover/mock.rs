@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkVmBackend};
+use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
 
 /// Mock witness that carries raw bytes for testing.
@@ -61,7 +61,7 @@ impl ProverBackend for MockProverBackend {
         mode: ProvingMode,
     ) -> Result<ProofArtifact, Self::Error> {
         Ok(ProofArtifact {
-            backend: ZkVmBackend::Mock,
+            backend: ZkvmBackend::Mock,
             mode,
             proof_bytes: vec![0xDE, 0xAD],
             public_values: vec![],
@@ -75,7 +75,7 @@ impl ProverBackend for MockProverBackend {
         _program: &Self::Program,
         proof: &ProofArtifact,
     ) -> Result<bool, Self::Error> {
-        Ok(proof.backend == ZkVmBackend::Mock)
+        Ok(proof.backend == ZkvmBackend::Mock)
     }
 
     async fn estimate_cost(
@@ -105,7 +105,7 @@ mod tests {
             .prove(&program, &witness, ProvingMode::Execute)
             .await
             .unwrap();
-        assert_eq!(proof.backend, ZkVmBackend::Mock);
+        assert_eq!(proof.backend, ZkvmBackend::Mock);
         assert_eq!(proof.mode, ProvingMode::Execute);
 
         let valid = backend.verify(&program, &proof).await.unwrap();

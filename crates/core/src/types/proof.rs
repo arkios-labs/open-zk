@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Which zkVM backend produced (or should produce) the proof.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ZkVmBackend {
+pub enum ZkvmBackend {
     Sp1,
     RiscZero,
     Mock,
@@ -23,7 +23,7 @@ pub enum ProvingMode {
 /// A completed proof with its metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofArtifact {
-    pub backend: ZkVmBackend,
+    pub backend: ZkvmBackend,
     pub mode: ProvingMode,
     pub proof_bytes: Vec<u8>,
     pub public_values: Vec<u8>,
@@ -57,7 +57,7 @@ pub struct CostEstimate {
 /// A plan for proving a range, potentially split into sub-ranges + aggregation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofPlan {
-    pub backend: ZkVmBackend,
+    pub backend: ZkvmBackend,
     pub mode: ProvingMode,
     /// Individual range proof requests.
     pub range_requests: Vec<ProofRequest>,
