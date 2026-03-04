@@ -2,7 +2,7 @@ mod commands;
 mod config;
 
 use clap::{Parser, Subcommand};
-use commands::{estimate, init, prove, serve, status};
+use commands::{estimate, fast_track, init, prove, serve, status};
 
 /// open-zk: A cost-effective ZK proving solution for OP Stack rollups.
 #[derive(Debug, Parser)]
@@ -24,6 +24,8 @@ enum Commands {
     Estimate(estimate::EstimateArgs),
     /// Initialize a new open-zk.toml configuration file.
     Init(init::InitArgs),
+    /// Deploy OpenZk contracts to a devnet (fast-track setup).
+    FastTrack(fast_track::FastTrackArgs),
 }
 
 #[tokio::main]
@@ -43,5 +45,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status(args) => status::execute(args).await,
         Commands::Estimate(args) => estimate::execute(args).await,
         Commands::Init(args) => init::execute(args),
+        Commands::FastTrack(args) => fast_track::execute(args).await,
     }
 }
