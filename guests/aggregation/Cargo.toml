@@ -1,0 +1,15 @@
+[package]
+name = "guest-aggregation"
+version = "0.1.0"
+edition = "2021"
+
+# Compiled separately for zkVM targets. Not a workspace member.
+
+[features]
+sp1 = ["open-zk-guest/sp1"]
+risczero = ["open-zk-guest/risczero"]
+
+[dependencies]
+open-zk-guest = { path = "../../crates/guest", default-features = false }
+open-zk-core = { path = "../../crates/core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
