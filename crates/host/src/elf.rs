@@ -51,25 +51,68 @@
 //! }
 //! ```
 
-/// Path to the range proof guest ELF binary (SP1 v6 — riscv64im target).
-///
-/// Set to the output of `cargo prove build` in `guests/range/`.
+// ---------------------------------------------------------------------------
+// DA-specific range proof guest ELF paths
+// ---------------------------------------------------------------------------
+
+/// Path to the Ethereum DA range proof guest ELF (SP1 v6).
+pub const RANGE_ETHEREUM_ELF_PATH: &str =
+    "guests/range-ethereum/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-ethereum";
+
+/// Path to the Celestia DA range proof guest ELF (SP1 v6).
+pub const RANGE_CELESTIA_ELF_PATH: &str =
+    "guests/range-celestia/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-celestia";
+
+/// Path to the EigenDA range proof guest ELF (SP1 v6).
+pub const RANGE_EIGENDA_ELF_PATH: &str =
+    "guests/range-eigenda/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-eigenda";
+
+/// Path to the generic range proof guest ELF (SP1 v6, legacy skeleton).
 pub const RANGE_ELF_PATH: &str =
     "guests/range/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range";
 
-/// Path to the aggregation guest ELF binary (SP1 v6 — riscv64im target).
-///
-/// Set to the output of `cargo prove build` in `guests/aggregation/`.
+/// Path to the aggregation guest ELF (SP1 v6).
 pub const AGGREGATION_ELF_PATH: &str =
     "guests/aggregation/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-aggregation";
 
-/// Include the range proof ELF at compile time (requires prior build).
-///
-/// Use this when the ELF has been pre-built and placed at the expected path.
-/// Returns `None` if the ELF file doesn't exist at compile time.
-///
-/// For production use, prefer `sp1-build` in `build.rs` which builds and
-/// includes the ELF automatically.
+// ---------------------------------------------------------------------------
+// Compile-time ELF include macros
+// ---------------------------------------------------------------------------
+
+/// Include the Ethereum DA range proof ELF at compile time.
+#[macro_export]
+macro_rules! include_range_ethereum_elf {
+    () => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../guests/range-ethereum/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-ethereum"
+        ))
+    };
+}
+
+/// Include the Celestia DA range proof ELF at compile time.
+#[macro_export]
+macro_rules! include_range_celestia_elf {
+    () => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../guests/range-celestia/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-celestia"
+        ))
+    };
+}
+
+/// Include the EigenDA range proof ELF at compile time.
+#[macro_export]
+macro_rules! include_range_eigenda_elf {
+    () => {
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../guests/range-eigenda/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-eigenda"
+        ))
+    };
+}
+
+/// Include the generic range proof ELF at compile time (legacy skeleton).
 #[macro_export]
 macro_rules! include_range_elf {
     () => {
@@ -80,7 +123,7 @@ macro_rules! include_range_elf {
     };
 }
 
-/// Include the aggregation ELF at compile time (requires prior build).
+/// Include the aggregation ELF at compile time.
 #[macro_export]
 macro_rules! include_aggregation_elf {
     () => {
