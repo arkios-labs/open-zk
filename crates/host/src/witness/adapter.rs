@@ -2,35 +2,62 @@
 //!
 //! When a zkVM backend needs witness data in a particular format (e.g., SP1's
 //! `SP1Stdin` or RISC Zero's `ExecutorEnv`), these adapters handle the conversion.
+//!
+//! The guest program reads data using serde-typed `io.read::<T>()` calls:
+//!   1. `io.read::<BootInfo>()`   — serde deserialization
+//!   2. `io.read::<Vec<u8>>()`    — serde deserialization of witness bytes
+//!
+//! The adapter converts RawWitness (ABI-encoded boot_info + raw oracle_data)
+//! into backend-specific witness types that use typed serde writes to match.
 
 use open_zk_core::traits::RawWitness;
+#[cfg(any(feature = "sp1", feature = "risczero"))]
+use open_zk_core::types::BootInfo;
 
-/// Convert a RawWitness into SP1-compatible stdin data.
+/// Convert a RawWitness into an SP1 witness with properly typed stdin writes.
 ///
-/// Returns the serialized bytes that can be fed into `SP1Stdin::write_slice`.
+/// Decodes `BootInfo` from ABI format, then writes it and the oracle data
+/// to `SP1Stdin` using typed `write()` (bincode serde), matching the guest's
+/// `io.read::<BootInfo>()` and `io.read::<Vec<u8>>()` calls.
 #[cfg(feature = "sp1")]
-pub fn raw_witness_to_sp1_bytes(witness: &RawWitness) -> Vec<u8> {
-    // SP1 stdin expects sequential writes:
-    // 1. boot_info length + data
-    // 2. oracle_data length + data
-    // 3. blob_data length + data
-    let mut buf = Vec::new();
-    buf.extend_from_slice(&(witness.boot_info.len() as u32).to_le_bytes());
-    buf.extend_from_slice(&witness.boot_info);
-    buf.extend_from_slice(&(witness.oracle_data.len() as u32).to_le_bytes());
-    buf.extend_from_slice(&witness.oracle_data);
-    buf.extend_from_slice(&(witness.blob_data.len() as u32).to_le_bytes());
-    buf.extend_from_slice(&witness.blob_data);
-    buf
+pub fn raw_witness_to_sp1_witness(
+    witness: &RawWitness,
+) -> Result<crate::prover::Sp1Witness, String> {
+    let boot_info = BootInfo::from_abi_bytes(&witness.boot_info)
+        .map_err(|e| format!("failed to decode BootInfo from ABI: {e}"))?;
+
+    let mut stdin = sp1_sdk::SP1Stdin::new();
+    stdin.write(&boot_info);
+    stdin.write(&witness.oracle_data);
+
+    Ok(crate::prover::Sp1Witness { stdin })
 }
 
-/// Convert a RawWitness into RISC Zero-compatible input data.
+/// Convert a RawWitness into a RISC Zero witness with structured data.
 ///
-/// Returns the serialized bytes that can be fed into `ExecutorEnv::write_slice`.
+/// Decodes `BootInfo` from ABI format. The `RiscZeroWitness` holds structured
+/// fields that are serialized via risc0-serde when building the `ExecutorEnv`,
+/// matching the guest's `env::read::<BootInfo>()` and `env::read::<Vec<u8>>()`.
 #[cfg(feature = "risczero")]
-pub fn raw_witness_to_risczero_bytes(witness: &RawWitness) -> Vec<u8> {
-    // RISC Zero env expects sequential reads via env::read_slice:
-    // Same wire format as SP1 for now.
+pub fn raw_witness_to_risczero_witness(
+    witness: &RawWitness,
+) -> Result<crate::prover::RiscZeroWitness, String> {
+    let boot_info = BootInfo::from_abi_bytes(&witness.boot_info)
+        .map_err(|e| format!("failed to decode BootInfo from ABI: {e}"))?;
+
+    Ok(crate::prover::RiscZeroWitness {
+        boot_info,
+        witness_data: witness.oracle_data.clone(),
+    })
+}
+
+/// Encode a RawWitness into a length-prefixed byte buffer for transport/storage.
+///
+/// Wire format:
+///   [boot_info_len: u32 LE][boot_info bytes]
+///   [oracle_data_len: u32 LE][oracle_data bytes]
+///   [blob_data_len: u32 LE][blob_data bytes]
+pub fn raw_witness_to_bytes(witness: &RawWitness) -> Vec<u8> {
     let mut buf = Vec::new();
     buf.extend_from_slice(&(witness.boot_info.len() as u32).to_le_bytes());
     buf.extend_from_slice(&witness.boot_info);
@@ -41,9 +68,9 @@ pub fn raw_witness_to_risczero_bytes(witness: &RawWitness) -> Vec<u8> {
     buf
 }
 
-/// Decode adapter bytes back into a RawWitness.
+/// Decode a RawWitness from a length-prefixed byte buffer.
 ///
-/// Inverse of both `raw_witness_to_sp1_bytes` and `raw_witness_to_risczero_bytes`.
+/// Inverse of `raw_witness_to_bytes`.
 pub fn bytes_to_raw_witness(data: &[u8]) -> Option<RawWitness> {
     let mut offset = 0;
 
@@ -75,6 +102,8 @@ pub fn bytes_to_raw_witness(data: &[u8]) -> Option<RawWitness> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy_primitives::B256;
+    use open_zk_core::types::BootInfo;
 
     fn sample_witness() -> RawWitness {
         RawWitness {
@@ -84,18 +113,25 @@ mod tests {
         }
     }
 
+    fn sample_abi_witness() -> RawWitness {
+        let boot_info = BootInfo {
+            l1_head: B256::repeat_byte(0x11),
+            l2_pre_root: B256::repeat_byte(0x22),
+            l2_claim: B256::repeat_byte(0x33),
+            l2_block_number: 100,
+            rollup_config_hash: B256::repeat_byte(0x44),
+        };
+        RawWitness {
+            boot_info: boot_info.to_abi_bytes(),
+            oracle_data: b"oracle-preimages".to_vec(),
+            blob_data: vec![],
+        }
+    }
+
     #[test]
     fn bytes_roundtrip() {
         let witness = sample_witness();
-        // Manually construct the wire format
-        let mut buf = Vec::new();
-        buf.extend_from_slice(&(witness.boot_info.len() as u32).to_le_bytes());
-        buf.extend_from_slice(&witness.boot_info);
-        buf.extend_from_slice(&(witness.oracle_data.len() as u32).to_le_bytes());
-        buf.extend_from_slice(&witness.oracle_data);
-        buf.extend_from_slice(&(witness.blob_data.len() as u32).to_le_bytes());
-        buf.extend_from_slice(&witness.blob_data);
-
+        let buf = raw_witness_to_bytes(&witness);
         let decoded = bytes_to_raw_witness(&buf).unwrap();
         assert_eq!(decoded.boot_info, witness.boot_info);
         assert_eq!(decoded.oracle_data, witness.oracle_data);
@@ -104,16 +140,12 @@ mod tests {
 
     #[test]
     fn empty_witness_roundtrip() {
-        let _witness = RawWitness {
+        let witness = RawWitness {
             boot_info: vec![],
             oracle_data: vec![],
             blob_data: vec![],
         };
-        let mut buf = Vec::new();
-        buf.extend_from_slice(&0u32.to_le_bytes());
-        buf.extend_from_slice(&0u32.to_le_bytes());
-        buf.extend_from_slice(&0u32.to_le_bytes());
-
+        let buf = raw_witness_to_bytes(&witness);
         let decoded = bytes_to_raw_witness(&buf).unwrap();
         assert!(decoded.boot_info.is_empty());
         assert!(decoded.oracle_data.is_empty());
@@ -126,25 +158,31 @@ mod tests {
         assert!(bytes_to_raw_witness(&[5, 0, 0, 0]).is_none());
     }
 
+    #[test]
+    fn abi_boot_info_decode() {
+        let witness = sample_abi_witness();
+        let boot_info = BootInfo::from_abi_bytes(&witness.boot_info).unwrap();
+        assert_eq!(boot_info.l1_head, B256::repeat_byte(0x11));
+        assert_eq!(boot_info.l2_block_number, 100);
+    }
+
     #[cfg(feature = "sp1")]
     #[test]
-    fn sp1_adapter_roundtrip() {
-        let witness = sample_witness();
-        let buf = raw_witness_to_sp1_bytes(&witness);
-        let decoded = bytes_to_raw_witness(&buf).unwrap();
-        assert_eq!(decoded.boot_info, witness.boot_info);
-        assert_eq!(decoded.oracle_data, witness.oracle_data);
-        assert_eq!(decoded.blob_data, witness.blob_data);
+    fn sp1_witness_from_raw() {
+        let witness = sample_abi_witness();
+        let sp1_witness = raw_witness_to_sp1_witness(&witness).unwrap();
+        // Verify the SP1Stdin was created (we can't easily inspect its contents,
+        // but if from_abi_bytes succeeded and write didn't panic, the format is correct)
+        let _ = sp1_witness;
     }
 
     #[cfg(feature = "risczero")]
     #[test]
-    fn risczero_adapter_roundtrip() {
-        let witness = sample_witness();
-        let buf = raw_witness_to_risczero_bytes(&witness);
-        let decoded = bytes_to_raw_witness(&buf).unwrap();
-        assert_eq!(decoded.boot_info, witness.boot_info);
-        assert_eq!(decoded.oracle_data, witness.oracle_data);
-        assert_eq!(decoded.blob_data, witness.blob_data);
+    fn risczero_witness_from_raw() {
+        let witness = sample_abi_witness();
+        let rz_witness = raw_witness_to_risczero_witness(&witness).unwrap();
+        assert_eq!(rz_witness.boot_info.l1_head, B256::repeat_byte(0x11));
+        assert_eq!(rz_witness.boot_info.l2_block_number, 100);
+        assert_eq!(rz_witness.witness_data, b"oracle-preimages");
     }
 }

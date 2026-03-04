@@ -9,6 +9,10 @@ members = [
     "crates/contracts",
     "crates/cli",
 ]
+exclude = [
+    "guests/range",
+    "guests/aggregation",
+]
 
 [workspace.package]
 version = "0.1.0"

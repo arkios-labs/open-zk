@@ -6,11 +6,12 @@ license.workspace = true
 description = "Guest-side I/O abstraction for zkVM programs"
 
 [features]
-sp1 = ["dep:sp1-zkvm"]
+sp1 = ["dep:sp1-zkvm", "dep:sha2"]
 risczero = ["dep:risc0-zkvm"]
 
 [dependencies]
 open-zk-core = { workspace = true }
 serde = { workspace = true }
-sp1-zkvm = { workspace = true, optional = true }
+sp1-zkvm = { workspace = true, optional = true, features = ["verify"] }
+sha2 = { version = "0.10", default-features = false, optional = true }
 risc0-zkvm = { workspace = true, optional = true }

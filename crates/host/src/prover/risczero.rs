@@ -1,27 +1,62 @@
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
+use open_zk_core::types::{BootInfo, CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, Receipt};
 
-/// Witness carrying RISC Zero executor environment inputs.
+/// Convert a RISC Zero image ID ([u32; 8]) to a 32-byte array (little-endian words).
+fn image_id_to_bytes(image_id: &[u32; 8]) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    for (i, word) in image_id.iter().enumerate() {
+        bytes[i * 4..(i + 1) * 4].copy_from_slice(&word.to_le_bytes());
+    }
+    bytes
+}
+
+/// Witness carrying structured data for RISC Zero guest execution.
+///
+/// Contains typed fields that are serialized using risc0-serde when
+/// building the `ExecutorEnv`. This ensures wire format compatibility
+/// with the guest's `env::read::<T>()` calls.
 pub struct RiscZeroWitness {
-    pub input_data: Vec<u8>,
+    /// Boot information (L1/L2 anchors, claim, rollup config hash).
+    pub boot_info: BootInfo,
+    /// Serialized oracle preimage data for the guest derivation pipeline.
+    pub witness_data: Vec<u8>,
 }
 
 impl WitnessInput for RiscZeroWitness {}
 
+impl RiscZeroWitness {
+    /// Build a RISC Zero `ExecutorEnv` from the structured witness data.
+    ///
+    /// Uses typed `write()` calls that serialize via risc0-serde, matching
+    /// the guest's `env::read::<BootInfo>()` and `env::read::<Vec<u8>>()`.
+    fn build_env(&self) -> Result<ExecutorEnv<'static>, RiscZeroProverError> {
+        ExecutorEnv::builder()
+            .write(&self.boot_info)
+            .map_err(|e| RiscZeroProverError::ProvingFailed(format!("write boot_info: {e}")))?
+            .write(&self.witness_data)
+            .map_err(|e| RiscZeroProverError::ProvingFailed(format!("write witness_data: {e}")))?
+            .build()
+            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))
+    }
+}
+
 /// A guest program identified by its RISC Zero image ID and ELF.
 pub struct RiscZeroProgram {
     pub image_id: [u32; 8],
+    image_id_bytes: [u8; 32],
     pub elf: Vec<u8>,
     pub program_name: String,
 }
 
 impl RiscZeroProgram {
     pub fn new(name: &str, image_id: [u32; 8], elf: Vec<u8>) -> Self {
+        let image_id_bytes = image_id_to_bytes(&image_id);
         Self {
             image_id,
+            image_id_bytes,
             elf,
             program_name: name.to_string(),
         }
@@ -30,7 +65,7 @@ impl RiscZeroProgram {
 
 impl GuestProgram for RiscZeroProgram {
     fn program_id(&self) -> &[u8] {
-        bytemuck::cast_slice(&self.image_id)
+        &self.image_id_bytes
     }
 
     fn name(&self) -> &str {
@@ -40,7 +75,8 @@ impl GuestProgram for RiscZeroProgram {
 
 /// RISC Zero prover backend.
 ///
-/// Supports local proving and remote proving via Bonsai.
+/// Uses `RISC0_DEV_MODE=1` for fast execution without real ZK proof generation.
+/// In dev mode, `default_prover()` produces fast dev receipts.
 pub struct RiscZeroProverBackend;
 
 #[derive(Debug, thiserror::Error)]
@@ -73,41 +109,38 @@ impl ProverBackend for RiscZeroProverBackend {
         witness: &Self::Witness,
         mode: ProvingMode,
     ) -> Result<ProofArtifact, Self::Error> {
-        let env = ExecutorEnv::builder()
-            .write_slice(&witness.input_data)
-            .build()
-            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
-
+        let env = witness.build_env()?;
         let prover = default_prover();
+        let program_id = B256::from(program.image_id_bytes);
 
         let opts = match mode {
-            ProvingMode::Execute => {
-                // Execute-only: run without generating a proof.
-                let session = risc0_zkvm::ExecutorImpl::from_elf(env, &program.elf)
-                    .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?
-                    .run()
-                    .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
-
-                return Ok(ProofArtifact {
-                    backend: ZkvmBackend::RiscZero,
-                    mode,
-                    proof_bytes: vec![],
-                    public_values: session.journal.bytes.clone(),
-                    program_id: B256::from_slice(bytemuck::cast_slice(&program.image_id)),
-                    cycle_count: Some(session.segments.len() as u64 * 1_048_576),
-                });
-            }
+            // In dev mode (RISC0_DEV_MODE=1), default opts produce fast dev receipts.
+            // In production, this would do a full prove — but execute-only callers
+            // should use dev mode for fast turnaround.
+            ProvingMode::Execute => ProverOpts::default(),
             ProvingMode::Compressed => ProverOpts::succinct(),
             ProvingMode::Groth16 => ProverOpts::groth16(),
         };
 
-        let receipt = prover
+        let prove_info = prover
             .prove_with_opts(env, &program.elf, &opts)
-            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?
-            .receipt;
+            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
 
-        let journal_bytes = receipt.journal.bytes.clone();
-        let receipt_bytes = bincode::serialize(&receipt)
+        let journal_bytes = prove_info.receipt.journal.bytes.clone();
+        let cycle_count = Some(prove_info.stats.total_cycles);
+
+        if mode == ProvingMode::Execute {
+            return Ok(ProofArtifact {
+                backend: ZkvmBackend::RiscZero,
+                mode,
+                proof_bytes: vec![],
+                public_values: journal_bytes,
+                program_id,
+                cycle_count,
+            });
+        }
+
+        let receipt_bytes = bincode::serialize(&prove_info.receipt)
             .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
 
         Ok(ProofArtifact {
@@ -115,8 +148,8 @@ impl ProverBackend for RiscZeroProverBackend {
             mode,
             proof_bytes: receipt_bytes,
             public_values: journal_bytes,
-            program_id: B256::from_slice(bytemuck::cast_slice(&program.image_id)),
-            cycle_count: None,
+            program_id,
+            cycle_count,
         })
     }
 
@@ -144,22 +177,17 @@ impl ProverBackend for RiscZeroProverBackend {
         program: &Self::Program,
         witness: &Self::Witness,
     ) -> Result<CostEstimate, Self::Error> {
-        let env = ExecutorEnv::builder()
-            .write_slice(&witness.input_data)
-            .build()
+        let env = witness.build_env()?;
+        let prover = default_prover();
+
+        let prove_info = prover
+            .prove(env, &program.elf)
             .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
 
-        let session = risc0_zkvm::ExecutorImpl::from_elf(env, &program.elf)
-            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?
-            .run()
-            .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
-
-        let segments = session.segments.len() as u64;
-        let cycles = segments * 1_048_576; // 2^20 cycles per segment
+        let cycles = prove_info.stats.total_cycles;
 
         Ok(CostEstimate {
             estimated_cycles: cycles,
-            // Rough estimate: Bonsai/Boundless pricing
             estimated_cost_usd: (cycles as f64) / 10_000_000.0 * 0.008,
             estimated_duration_secs: cycles / 500_000,
         })

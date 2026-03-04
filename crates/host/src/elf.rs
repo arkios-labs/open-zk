@@ -51,18 +51,17 @@
 //! }
 //! ```
 
-/// Path to the range proof guest ELF binary (SP1).
+/// Path to the range proof guest ELF binary (SP1 v6 — riscv64im target).
 ///
 /// Set to the output of `cargo prove build` in `guests/range/`.
-/// Default: `guests/range/elf/riscv32im-succinct-zkvm-elf`
-pub const RANGE_ELF_PATH: &str = "guests/range/elf/riscv32im-succinct-zkvm-elf";
+pub const RANGE_ELF_PATH: &str =
+    "guests/range/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range";
 
-/// Path to the aggregation guest ELF binary (SP1).
+/// Path to the aggregation guest ELF binary (SP1 v6 — riscv64im target).
 ///
 /// Set to the output of `cargo prove build` in `guests/aggregation/`.
-/// Default: `guests/aggregation/elf/riscv32im-succinct-zkvm-elf`
 pub const AGGREGATION_ELF_PATH: &str =
-    "guests/aggregation/elf/riscv32im-succinct-zkvm-elf";
+    "guests/aggregation/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-aggregation";
 
 /// Include the range proof ELF at compile time (requires prior build).
 ///
@@ -76,7 +75,7 @@ macro_rules! include_range_elf {
     () => {
         include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../guests/range/elf/riscv32im-succinct-zkvm-elf"
+            "/../../guests/range/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range"
         ))
     };
 }
@@ -87,7 +86,7 @@ macro_rules! include_aggregation_elf {
     () => {
         include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../guests/aggregation/elf/riscv32im-succinct-zkvm-elf"
+            "/../../guests/aggregation/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-aggregation"
         ))
     };
 }

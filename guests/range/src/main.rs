@@ -9,7 +9,9 @@
 //!   RISC Zero: cargo build --features risczero --target riscv32im-risc0-zkvm-elf
 
 #![no_main]
-#![cfg_attr(not(test), no_std)]
+// Both SP1 and RISC Zero provide std in their guest zkVM environments.
+// Only apply no_std when building for non-zkVM targets (plain cargo check).
+#![cfg_attr(not(any(feature = "sp1", feature = "risczero", test)), no_std)]
 
 extern crate alloc;
 

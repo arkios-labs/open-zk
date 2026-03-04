@@ -13,7 +13,9 @@ impl ZkvmReader for Sp1Io {
     }
 
     fn read_slice(&self, buf: &mut [u8]) {
-        sp1_zkvm::io::read_slice(buf);
+        // SP1 v6 removed read_slice; use read_vec + copy instead.
+        let vec = sp1_zkvm::io::read_vec();
+        buf[..vec.len()].copy_from_slice(&vec);
     }
 }
 
@@ -31,6 +33,9 @@ impl ZkvmComposer for Sp1Io {
     type ProgramId = [u32; 8];
 
     fn verify_inner_proof(&self, vkey: &Self::ProgramId, public_values: &[u8]) {
-        sp1_zkvm::lib::verify::verify_sp1_proof(vkey, &public_values.into());
+        // SP1 v6 verify_sp1_proof takes a public values digest (SHA-256 hash).
+        use sha2::{Digest, Sha256};
+        let pv_digest: [u8; 32] = Sha256::digest(public_values).into();
+        sp1_zkvm::lib::verify::verify_sp1_proof(vkey, &pv_digest);
     }
 }

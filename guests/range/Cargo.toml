@@ -9,14 +9,16 @@ edition = "2021"
 #   RISC Zero: cd guests/range && cargo risczero build --features risczero
 
 [features]
-sp1 = ["open-zk-guest/sp1"]
-risczero = ["open-zk-guest/risczero"]
+sp1 = ["open-zk-guest/sp1", "dep:sp1-zkvm"]
+risczero = ["open-zk-guest/risczero", "dep:risc0-zkvm"]
 
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false }
 open-zk-core = { path = "../../crates/core", default-features = false }
 alloy-primitives = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
+sp1-zkvm = { version = "6", optional = true }
+risc0-zkvm = { version = "3", optional = true }
 
 # Kona guest-side crates for OP Stack derivation (no_std compatible).
 # These are used when the full kona derivation pipeline is enabled.

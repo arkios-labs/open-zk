@@ -2,7 +2,7 @@ use alloy_primitives::B256;
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
 use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
-use sp1_sdk::{ProverClient, SP1Stdin};
+use sp1_sdk::{Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
 
 /// Witness carrying SP1-formatted stdin data.
 pub struct Sp1Witness {
@@ -24,6 +24,10 @@ impl Sp1Program {
             program_name: name.to_string(),
         }
     }
+
+    fn to_elf(&self) -> Elf {
+        Elf::from(std::sync::Arc::from(self.elf.as_slice()))
+    }
 }
 
 impl GuestProgram for Sp1Program {
@@ -36,11 +40,13 @@ impl GuestProgram for Sp1Program {
     }
 }
 
-/// SP1 prover backend using the Succinct SDK.
+/// SP1 prover backend using the Succinct SDK v6.
 ///
-/// Supports local proving and remote proving via the Succinct Network.
+/// Supports local proving (CPU/CUDA/mock) and remote proving via the Succinct Network.
+/// The prover type is determined by the `SP1_PROVER` env var (default: "cpu").
+/// Set `SP1_PROVER=mock` for fast execution without real ZK proof generation.
 pub struct Sp1ProverBackend {
-    client: ProverClient,
+    client: sp1_sdk::env::EnvProver,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -52,9 +58,9 @@ pub enum Sp1ProverError {
 }
 
 impl Sp1ProverBackend {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
-            client: ProverClient::from_env(),
+            client: ProverClient::from_env().await,
         }
     }
 }
@@ -75,50 +81,62 @@ impl ProverBackend for Sp1ProverBackend {
         witness: &Self::Witness,
         mode: ProvingMode,
     ) -> Result<ProofArtifact, Self::Error> {
-        let (pk, vk) = self.client.setup(&program.elf);
+        let elf = program.to_elf();
 
-        let proof = match mode {
+        match mode {
             ProvingMode::Execute => {
-                let (_, report) = self
+                let (public_values, report) = self
                     .client
-                    .execute(&program.elf, &witness.stdin)
-                    .run()
+                    .execute(elf, witness.stdin.clone())
+                    .await
                     .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
-                return Ok(ProofArtifact {
+                Ok(ProofArtifact {
                     backend: ZkvmBackend::Sp1,
                     mode,
                     proof_bytes: vec![],
-                    public_values: vec![],
+                    public_values: public_values.to_vec(),
                     program_id: B256::ZERO,
                     cycle_count: Some(report.total_instruction_count()),
-                });
+                })
             }
-            ProvingMode::Compressed => self
-                .client
-                .prove(&pk, &witness.stdin)
-                .compressed()
-                .run()
-                .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?,
-            ProvingMode::Groth16 => self
-                .client
-                .prove(&pk, &witness.stdin)
-                .groth16()
-                .run()
-                .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?,
-        };
+            ProvingMode::Compressed | ProvingMode::Groth16 => {
+                let pk = self
+                    .client
+                    .setup(elf)
+                    .await
+                    .map_err(|e| Sp1ProverError::ProvingFailed(format!("setup: {e}")))?;
 
-        let public_values = proof.public_values.to_vec();
-        let proof_bytes =
-            bincode::serialize(&proof).map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
+                let proof = match mode {
+                    ProvingMode::Compressed => self
+                        .client
+                        .prove(&pk, witness.stdin.clone())
+                        .compressed()
+                        .await
+                        .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?,
+                    ProvingMode::Groth16 => self
+                        .client
+                        .prove(&pk, witness.stdin.clone())
+                        .groth16()
+                        .await
+                        .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?,
+                    _ => unreachable!(),
+                };
 
-        Ok(ProofArtifact {
-            backend: ZkvmBackend::Sp1,
-            mode,
-            proof_bytes,
-            public_values,
-            program_id: B256::from_slice(&vk.bytes32()),
-            cycle_count: None,
-        })
+                let public_values = proof.public_values.to_vec();
+                let proof_bytes = bincode::serialize(&proof)
+                    .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
+
+                let vk_bytes = pk.verifying_key().bytes32_raw();
+                Ok(ProofArtifact {
+                    backend: ZkvmBackend::Sp1,
+                    mode,
+                    proof_bytes,
+                    public_values,
+                    program_id: B256::from(vk_bytes),
+                    cycle_count: None,
+                })
+            }
+        }
     }
 
     async fn verify(
@@ -130,13 +148,19 @@ impl ProverBackend for Sp1ProverBackend {
             return Ok(true);
         }
 
-        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues = bincode::deserialize(&proof.proof_bytes)
-            .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
+        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues =
+            bincode::deserialize(&proof.proof_bytes)
+                .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
 
-        let (_pk, vk) = self.client.setup(&program.elf);
+        let elf = program.to_elf();
+        let pk = self
+            .client
+            .setup(elf)
+            .await
+            .map_err(|e| Sp1ProverError::VerificationFailed(format!("setup: {e}")))?;
 
         self.client
-            .verify(&sp1_proof, &vk)
+            .verify(&sp1_proof, pk.verifying_key(), None)
             .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
 
         Ok(true)
@@ -147,10 +171,12 @@ impl ProverBackend for Sp1ProverBackend {
         program: &Self::Program,
         witness: &Self::Witness,
     ) -> Result<CostEstimate, Self::Error> {
+        let elf = program.to_elf();
+
         let (_, report) = self
             .client
-            .execute(&program.elf, &witness.stdin)
-            .run()
+            .execute(elf, witness.stdin.clone())
+            .await
             .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
 
         let cycles = report.total_instruction_count();
