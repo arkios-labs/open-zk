@@ -9,6 +9,7 @@ description = "Host-side prover backends and witness generation"
 default = []
 sp1 = ["dep:sp1-sdk"]
 risczero = ["dep:risc0-zkvm"]
+kona = []
 
 [dependencies]
 open-zk-core = { workspace = true }

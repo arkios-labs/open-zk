@@ -27,11 +27,8 @@ impl WitnessProvider for MockWitnessProvider {
         .into_bytes();
 
         // Deterministic oracle data keyed on block range
-        let oracle_data = format!(
-            "oracle:{}:{}",
-            request.l2_start_block, request.l2_end_block
-        )
-        .into_bytes();
+        let oracle_data =
+            format!("oracle:{}:{}", request.l2_start_block, request.l2_end_block).into_bytes();
 
         // Deterministic blob data
         let blob_data = format!("blob:{}", request.l1_head).into_bytes();

@@ -15,4 +15,5 @@ risczero = ["open-zk-guest/risczero"]
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false }
 open-zk-core = { path = "../../crates/core", default-features = false }
+alloy-primitives = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
