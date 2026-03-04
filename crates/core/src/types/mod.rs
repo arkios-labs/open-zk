@@ -1,7 +1,9 @@
+mod config;
 mod journal;
 mod proof;
-mod config;
+mod witness_data;
 
+pub use config::*;
 pub use journal::*;
 pub use proof::*;
-pub use config::*;
+pub use witness_data::*;
