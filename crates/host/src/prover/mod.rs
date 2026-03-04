@@ -6,7 +6,7 @@ mod sp1;
 #[cfg(feature = "risczero")]
 mod risczero;
 
-pub use mock::{MockProverBackend, MockProgram, MockWitness};
+pub use mock::{MockProgram, MockProverBackend, MockWitness};
 
 #[cfg(feature = "sp1")]
 pub use self::sp1::Sp1ProverBackend;

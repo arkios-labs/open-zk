@@ -74,9 +74,7 @@ impl OpenZkConfigBuilder {
 
     pub fn build(self) -> Result<OpenZkConfig, ConfigError> {
         Ok(OpenZkConfig {
-            target_finality: self
-                .target_finality
-                .unwrap_or(Duration::from_secs(30 * 60)),
+            target_finality: self.target_finality.unwrap_or(Duration::from_secs(30 * 60)),
             max_cost_per_proof: self.max_cost_per_proof.unwrap_or(1.0),
             security: self.security.unwrap_or(SecurityLevel::Standard),
             l1_rpc_url: self

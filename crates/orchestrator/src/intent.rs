@@ -64,11 +64,8 @@ mod tests {
 
     #[test]
     fn max_security_always_beacon_sp1() {
-        let result = IntentResolver::resolve(
-            Duration::from_secs(3600),
-            0.10,
-            SecurityLevel::Maximum,
-        );
+        let result =
+            IntentResolver::resolve(Duration::from_secs(3600), 0.10, SecurityLevel::Maximum);
         assert_eq!(result.proof_mode, ProofMode::Beacon);
         assert_eq!(result.backend, ZkvmBackend::Sp1);
         assert_eq!(result.aggregation_window, 10);
@@ -76,11 +73,7 @@ mod tests {
 
     #[test]
     fn economy_always_sentinel_risczero() {
-        let result = IntentResolver::resolve(
-            Duration::from_secs(60),
-            10.0,
-            SecurityLevel::Economy,
-        );
+        let result = IntentResolver::resolve(Duration::from_secs(60), 10.0, SecurityLevel::Economy);
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
         assert_eq!(result.backend, ZkvmBackend::RiscZero);
         assert_eq!(result.aggregation_window, 1000);

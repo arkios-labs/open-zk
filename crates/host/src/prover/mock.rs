@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
+use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 
 /// Mock witness that carries raw bytes for testing.
 #[derive(Debug, Default)]

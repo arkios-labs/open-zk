@@ -108,8 +108,8 @@ impl ProverBackend for Sp1ProverBackend {
         };
 
         let public_values = proof.public_values.to_vec();
-        let proof_bytes = bincode::serialize(&proof)
-            .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
+        let proof_bytes =
+            bincode::serialize(&proof).map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
 
         Ok(ProofArtifact {
             backend: ZkvmBackend::Sp1,
@@ -130,9 +130,8 @@ impl ProverBackend for Sp1ProverBackend {
             return Ok(true);
         }
 
-        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues =
-            bincode::deserialize(&proof.proof_bytes)
-                .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
+        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues = bincode::deserialize(&proof.proof_bytes)
+            .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
 
         let (_pk, vk) = self.client.setup(&program.elf);
 
