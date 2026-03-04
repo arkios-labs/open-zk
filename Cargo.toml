@@ -55,11 +55,12 @@ kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7"
 kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-driver = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-executor = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-kona-preimage = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, features = ["rkyv", "serde"] }
+kona-preimage = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false, features = ["rkyv", "serde", "std"] }
 kona-mpt = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-protocol = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-kona-host = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7" }
+kona-host = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", features = ["single"] }
+kona-client = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-providers-alloy = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7" }
 kona-registry = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 
