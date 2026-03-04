@@ -29,6 +29,10 @@ open-zk-cli = { path = "crates/cli" }
 # Ethereum / Alloy
 alloy-primitives = { version = "1", default-features = false, features = ["serde"] }
 alloy-sol-types = "1"
+alloy-provider = "1"
+alloy-rpc-types-eth = "1"
+alloy-contract = "1"
+url = "2"
 
 # Serialization
 serde = { version = "1", default-features = false, features = ["derive"] }

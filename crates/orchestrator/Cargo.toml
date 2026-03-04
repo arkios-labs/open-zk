@@ -5,13 +5,30 @@ edition.workspace = true
 license.workspace = true
 description = "Intent resolver and orchestration engine for open-zk"
 
+[features]
+default = []
+rpc = [
+    "dep:open-zk-contracts",
+    "dep:alloy-provider",
+    "dep:alloy-rpc-types-eth",
+    "dep:alloy-contract",
+    "dep:alloy-sol-types",
+    "dep:url",
+]
+
 [dependencies]
 open-zk-core = { workspace = true }
+open-zk-contracts = { workspace = true, optional = true }
 alloy-primitives = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
+alloy-provider = { workspace = true, optional = true }
+alloy-rpc-types-eth = { workspace = true, optional = true }
+alloy-contract = { workspace = true, optional = true }
+alloy-sol-types = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
