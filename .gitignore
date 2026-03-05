@@ -12,3 +12,9 @@ devnet.log
 
 # Guest ELF outputs
 guests/*/elf/
+
+# Foundry (Solidity contracts)
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
