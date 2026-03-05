@@ -51,3 +51,18 @@ ORACLE_ADDRESS=0x76ca03a67C049477FfB09694dFeF00416dB69746 \
 
 - Feature flags, crate names, modules, filenames: `risc0` (matches official crate naming)
 - Rust type names (structs, enums): `RiscZero*` (PascalCase brand name convention)
+
+## Style Guide
+
+- Run `cargo fmt` before committing — CI enforces `cargo fmt --check`
+- Run `cargo clippy --workspace --all-targets -- -D warnings` — CI treats warnings as errors
+- Commit messages: `type(scope): description` (e.g., `fix(host): handle empty witness`)
+  - Types: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`, `ci`, `style`
+  - Scope: crate name (`host`, `guest`, `core`, `contracts`, `cli`, `orchestrator`)
+
+## Workflow Rules
+
+- **Always run tests** (`cargo test --workspace`) after completing a task before considering it done.
+- **Update README.md** if changes affect user-facing behavior, CLI commands, configuration, architecture, or setup instructions. README is for end users — keep it focused on usage, not internals.
+- **Update CONTRIBUTING.md** if changes affect development setup, CI pipeline, commit conventions, or contributor workflows.
+- **Update CLAUDE.md** if changes affect build commands, testing procedures, naming conventions, or workflow rules.

@@ -1,26 +1,123 @@
 # Contributing to open-zk
 
-## Development Patterns
+## Development Setup
 
-### Atomic Commits
+### Prerequisites
 
-Every commit contains **exactly one logical change unit**.
+- **Rust** (edition 2021, stable toolchain)
+- **[just](https://github.com/casey/just)** — task runner
+- **Docker** — for devnet
+- **[Foundry](https://book.getfoundry.sh/)** — for Solidity tests
+- **SP1 toolchain** (for SP1 guest builds):
+  ```bash
+  curl -L https://sp1.succinct.xyz | bash && sp1up --version 6.0.2
+  ```
+- **RISC Zero toolchain** (for RISC Zero guest builds):
+  ```bash
+  curl -L https://risczero.com/install | bash && rzup install
+  ```
 
-| Type | Prefix | Example |
-|---|---|---|
-| New feature | `feat:` | `feat: add ProverBackend trait` |
-| Bug fix | `fix:` | `fix: correct intent resolution for economy mode` |
-| Refactoring | `refactor:` | `refactor: rename crate directories to short names` |
-| Test | `test:` | `test: add mock prover integration tests` |
-| Documentation | `docs:` | `docs: update CLAUDE.md with new crate paths` |
-| Infra/CI | `chore:` | `chore: add rust-toolchain.toml` |
+### Build & Test
+
+```bash
+cargo build                                        # Build workspace
+cargo test --workspace                             # Run all unit tests
+cargo test -p open-zk-core                         # Single crate
+cargo test intent                                  # Filter by name
+cargo clippy --workspace --all-targets -- -D warnings   # Lint
+cargo fmt --check                                  # Format check
+just ci                                            # All of the above
+```
+
+### Build Guest ELFs
+
+```bash
+# SP1
+cd guests/range-ethereum && cargo prove build --features sp1
+
+# RISC Zero
+cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
+```
+
+### Solidity Tests
+
+```bash
+cd contracts
+forge install   # First time only
+forge test
+```
+
+## CI Pipeline
+
+GitHub Actions runs on every PR and push to `main`. All checks must pass before merging.
+
+| Job | Description | Runs |
+|-----|-------------|------|
+| **Format** | `cargo fmt --check` | Parallel |
+| **Clippy** | `cargo clippy --workspace -- -D warnings` | Parallel |
+| **Test** | `cargo test --workspace` (unit tests) | Parallel |
+| **Solidity** | `forge test` (contract tests) | Parallel |
+| **E2E (SP1)** | SP1 mock prover against devnet | After Test |
+| **E2E (RISC Zero)** | RISC Zero dev mode against devnet | After Test |
+
+SP1 and RISC Zero E2E tests run in parallel on separate runners, each with its own devnet instance. Guest ELFs are cached by source hash to skip rebuilds when guest code hasn't changed.
+
+## E2E Testing (Local)
+
+Requires a running devnet:
+
+```bash
+just devnet-fetch   # One-time: clone Optimism monorepo
+just devnet-up      # Start L1/L2/Beacon/OP Node
+
+# SP1 E2E (mock prover, ~15s)
+SP1_PROVER=mock cargo test -p open-zk-host \
+  --features "sp1,kona" --test range_ethereum_e2e \
+  --release -- --ignored --nocapture
+
+# RISC Zero E2E (dev mode, ~15s)
+RISC0_DEV_MODE=1 cargo test -p open-zk-host \
+  --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
+  --release -- --ignored --nocapture
+
+just devnet-down    # Stop containers
+```
+
+**Important**: Always use `--release` for E2E tests. Debug mode is ~14x slower.
+
+## Style Guide
+
+- Run `cargo fmt` before committing — CI enforces `cargo fmt --check`
+- All clippy warnings are treated as errors
+- Keep code simple — avoid over-engineering and premature abstractions
+
+## Commit Messages
+
+Follow the convention: `type(scope): description`
+
+**Types**: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`, `ci`, `style`
+
+**Scope**: crate name (e.g., `host`, `guest`, `core`, `contracts`, `cli`, `orchestrator`)
+
+Examples:
+```
+feat(host): add witness caching for repeated block ranges
+fix(contracts): gate sol!(rpc) behind rpc feature
+refactor(core): unify risczero naming to risc0
+ci: split E2E into parallel SP1 and RISC Zero jobs
+```
 
 **Rules:**
-1. Every commit must pass `cargo build && cargo test && cargo clippy -- -D warnings`
+1. Every commit must pass `cargo build && cargo test --workspace && cargo clippy -- -D warnings`
 2. Do not mix unrelated changes (scaffolding + trait definitions = 2 separate commits)
 3. Commit message explains "why" — the diff shows "what"
 
-### Workspace Structure
+## Naming Conventions
+
+- Feature flags, crate names, modules, filenames: `risc0` (matches official crate naming)
+- Rust type names (structs, enums): `RiscZero*` (PascalCase brand name convention)
+
+## Workspace Structure
 
 Directory names are short; only `package.name` in Cargo.toml carries the `open-zk-` prefix:
 
@@ -52,22 +149,3 @@ core  ←  contracts
 
 - `core`: `std` (default) — host environment. Can be used with `no_std` inside guest (zkVM).
 - `guest`: `sp1` | `risc0` — compile-time zkVM backend selection.
-
-### Testing
-
-```bash
-cargo test                          # all crates
-cargo test -p open-zk-core          # single crate
-cargo test intent                   # filter by name
-cargo clippy -- -D warnings         # lint (same as CI)
-cargo fmt --check                   # format check
-```
-
-### Phase Roadmap
-
-1. **Phase 1 — Foundation**: core traits/types, mock prover, config builder
-2. **Phase 2 — SP1 Backend**: guest SP1 impl, Sp1ProverBackend, E2E
-3. **Phase 3 — RISC Zero Backend**: guest RiscZero impl, same guest compiles on both
-4. **Phase 4 — Orchestration**: aggregation guest, engine loops, scheduling
-5. **Phase 5 — On-Chain**: Solidity contracts, bindings, deployment
-6. **Phase 6 — CLI**: prove/serve/deploy commands, TOML config

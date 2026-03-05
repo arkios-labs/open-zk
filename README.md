@@ -2,6 +2,7 @@
 
 **Unified ZK proving SDK for OP Stack rollups**
 
+[![CI](https://github.com/arkios-labs/open-zk/actions/workflows/ci.yml/badge.svg)](https://github.com/arkios-labs/open-zk/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-edition%202021-orange)](https://www.rust-lang.org/)
 
@@ -350,20 +351,7 @@ just devnet-down    # Stop all containers
 
 ## Contributing
 
-```bash
-# Full CI check (format + lint + test)
-just ci
-
-# Single crate test
-cargo test -p <crate-name>
-
-# Lint
-cargo clippy -- -D warnings
-```
-
-Commit messages follow the convention: `type(scope): description`
-- Types: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`
-- Scope: crate name (e.g., `host`, `guest`, `core`)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, CI details, and contribution guidelines.
 
 ## License
 
