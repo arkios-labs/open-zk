@@ -8,7 +8,9 @@ description = "Host-side prover backends and witness generation"
 [features]
 default = []
 sp1 = ["dep:sp1-sdk", "dep:bincode"]
-risczero = ["dep:risc0-zkvm", "dep:bincode"]
+risczero = ["dep:risc0-zkvm", "dep:bincode", "dep:open-zk-build-risczero"]
+# Rebuild RISC Zero guest ELFs from source (requires rzup toolchain)
+rebuild-risczero-guest = ["risczero", "open-zk-build-risczero/rebuild-guest", "open-zk-build-risczero/debug-guest-build"]
 kona = [
     "dep:kona-host",
     "dep:kona-client",
@@ -34,6 +36,7 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 sp1-sdk = { workspace = true, optional = true }
 risc0-zkvm = { workspace = true, optional = true }
+open-zk-build-risczero = { workspace = true, optional = true }
 bincode = { version = "1", optional = true }
 rkyv = { workspace = true, features = ["alloc", "validation", "size_32", "std"], optional = true }
 kona-host = { workspace = true, optional = true }
