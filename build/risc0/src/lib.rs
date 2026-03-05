@@ -7,10 +7,10 @@
 //!
 //! ```bash
 //! # Debug (local cross-compile, fast):
-//! cargo build -p open-zk-build-risczero --features rebuild-guest,debug-guest-build
+//! cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 //!
 //! # Release (Docker, reproducible):
-//! cargo build -p open-zk-build-risczero --features rebuild-guest --release
+//! cargo build -p open-zk-build-risc0 --features rebuild-guest --release
 //! ```
 //!
 //! # Generated constants

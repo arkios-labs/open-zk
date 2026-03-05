@@ -115,7 +115,7 @@ async fn test_onchain_sp1_proof_submission() {
 /// Full E2E: RISC Zero mock proof submission.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
-async fn test_onchain_risczero_proof_submission() {
+async fn test_onchain_risc0_proof_submission() {
     init_tracing();
 
     let oracle_addr = oracle_address();

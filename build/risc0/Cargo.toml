@@ -1,5 +1,5 @@
 [package]
-name = "open-zk-build-risczero"
+name = "open-zk-build-risc0"
 version = "0.1.0"
 edition = "2021"
 description = "RISC Zero guest ELF builder for open-zk"

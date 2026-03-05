@@ -70,7 +70,7 @@ fn witness_adapter_roundtrip() {
         blob_data: b"test-blob-data".to_vec(),
     };
 
-    // Manually encode (same format as sp1/risczero adapters)
+    // Manually encode (same format as sp1/risc0 adapters)
     let mut buf = Vec::new();
     for field in [&witness.boot_info, &witness.oracle_data, &witness.blob_data] {
         buf.extend_from_slice(&(field.len() as u32).to_le_bytes());

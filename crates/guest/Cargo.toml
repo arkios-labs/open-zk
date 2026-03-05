@@ -7,7 +7,7 @@ description = "Guest-side I/O abstraction for zkVM programs"
 
 [features]
 sp1 = ["dep:sp1-zkvm", "dep:sha2"]
-risczero = ["dep:risc0-zkvm"]
+risc0 = ["dep:risc0-zkvm"]
 kona = ["dep:kona-preimage", "dep:async-trait", "dep:rkyv"]
 pipeline = [
     "kona",

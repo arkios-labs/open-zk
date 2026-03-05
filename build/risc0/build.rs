@@ -3,7 +3,7 @@ fn main() {
     {
         let guest_options = {
             let mut opts = risc0_build::GuestOptions::default();
-            opts.features.push("risczero".to_string());
+            opts.features.push("risc0".to_string());
 
             // In debug mode or with debug-guest-build feature, use local
             // cross-compilation via rzup toolchain (faster, no Docker needed).
@@ -15,7 +15,7 @@ fn main() {
                 opts.use_docker = Some(
                     risc0_build::DockerOptionsBuilder::default()
                         .root_dir({
-                            // build/risczero/ → build/ → repo root
+                            // build/risc0/ → build/ → repo root
                             let cwd = std::env::current_dir().unwrap();
                             cwd.parent()
                                 .unwrap()

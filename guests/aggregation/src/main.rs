@@ -16,7 +16,7 @@ use open_zk_core::types::StateTransitionJournal;
 #[cfg(feature = "sp1")]
 sp1_zkvm::entrypoint!(main);
 
-#[cfg(feature = "risczero")]
+#[cfg(feature = "risc0")]
 risc0_zkvm::guest::entry!(main);
 
 fn main() {

@@ -26,8 +26,8 @@ pub fn raw_witness_to_sp1_witness(
 ///
 /// The oracle_data already contains all preimages (including boot info as
 /// local preimage keys), so we just pass it through as-is.
-#[cfg(feature = "risczero")]
-pub fn raw_witness_to_risczero_witness(
+#[cfg(feature = "risc0")]
+pub fn raw_witness_to_risc0_witness(
     witness: &RawWitness,
 ) -> Result<crate::prover::RiscZeroWitness, String> {
     Ok(crate::prover::RiscZeroWitness {
@@ -133,11 +133,11 @@ mod tests {
         let _ = sp1_witness;
     }
 
-    #[cfg(feature = "risczero")]
+    #[cfg(feature = "risc0")]
     #[test]
-    fn risczero_witness_from_raw() {
+    fn risc0_witness_from_raw() {
         let witness = sample_witness();
-        let rz_witness = raw_witness_to_risczero_witness(&witness).unwrap();
+        let rz_witness = raw_witness_to_risc0_witness(&witness).unwrap();
         assert_eq!(rz_witness.oracle_data, b"oracle-preimages");
     }
 }

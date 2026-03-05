@@ -4,7 +4,7 @@
 //! data availability layer. Pipeline logic is shared via `run_range_program()`.
 
 #![no_main]
-#![cfg_attr(not(any(feature = "sp1", feature = "risczero", test)), no_std)]
+#![cfg_attr(not(any(feature = "sp1", feature = "risc0", test)), no_std)]
 
 extern crate alloc;
 
@@ -19,7 +19,7 @@ use open_zk_guest::pipeline::{DaSourceFactory, PreimageOracle};
 #[cfg(feature = "sp1")]
 sp1_zkvm::entrypoint!(main);
 
-#[cfg(feature = "risczero")]
+#[cfg(feature = "risc0")]
 risc0_zkvm::guest::entry!(main);
 
 struct EthereumDa;

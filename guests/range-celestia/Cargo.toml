@@ -6,11 +6,11 @@ edition = "2021"
 # This crate is NOT a workspace member.
 # It is compiled separately for zkVM targets:
 #   SP1:       cd guests/range-celestia && cargo prove build --features sp1
-#   RISC Zero: cd guests/range-celestia && cargo risczero build --features risczero
+#   RISC Zero: cd guests/range-celestia && cargo risc0 build --features risc0
 
 [features]
 sp1 = ["open-zk-guest/sp1", "dep:sp1-zkvm"]
-risczero = ["open-zk-guest/risczero", "dep:risc0-zkvm"]
+risc0 = ["open-zk-guest/risc0", "dep:risc0-zkvm"]
 
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }

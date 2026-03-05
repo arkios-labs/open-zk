@@ -94,7 +94,7 @@ impl ProverBackend for RiscZeroProverBackend {
     type Error = RiscZeroProverError;
 
     fn name(&self) -> &str {
-        "risczero"
+        "risc0"
     }
 
     async fn prove(

@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn economy_always_sentinel_risczero() {
+    fn economy_always_sentinel_risc0() {
         let result = IntentResolver::resolve(Duration::from_secs(60), 10.0, SecurityLevel::Economy);
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
         assert_eq!(result.backend, ZkvmBackend::RiscZero);
@@ -92,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn standard_fast_finality_low_budget_beacon_risczero() {
+    fn standard_fast_finality_low_budget_beacon_risc0() {
         let result = IntentResolver::resolve(
             Duration::from_secs(600), // 10 min
             0.10,

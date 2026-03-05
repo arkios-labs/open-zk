@@ -51,7 +51,7 @@ core  ←  contracts
 ### Feature Flags
 
 - `core`: `std` (default) — host environment. Can be used with `no_std` inside guest (zkVM).
-- `guest`: `sp1` | `risczero` — compile-time zkVM backend selection.
+- `guest`: `sp1` | `risc0` — compile-time zkVM backend selection.
 
 ### Testing
 

@@ -9,14 +9,14 @@ pub mod pipeline;
 #[cfg(feature = "sp1")]
 mod sp1_io;
 
-#[cfg(feature = "risczero")]
-mod risczero_io;
+#[cfg(feature = "risc0")]
+mod risc0_io;
 
 #[cfg(feature = "sp1")]
 pub use sp1_io::Sp1Io;
 
-#[cfg(feature = "risczero")]
-pub use risczero_io::RiscZeroIo;
+#[cfg(feature = "risc0")]
+pub use risc0_io::RiscZeroIo;
 
 /// Returns the I/O handle for the current zkVM backend.
 ///
@@ -32,7 +32,7 @@ pub fn io() -> Sp1Io {
     Sp1Io
 }
 
-#[cfg(feature = "risczero")]
+#[cfg(feature = "risc0")]
 pub fn io() -> RiscZeroIo {
     RiscZeroIo
 }

@@ -5,13 +5,13 @@
 //! Prerequisites:
 //!   - Running OP Stack devnet (`just devnet-up`)
 //!   - RISC Zero ELF built:
-//!     cargo build -p open-zk-build-risczero --features rebuild-guest,debug-guest-build
+//!     cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 //!
 //! Run:
-//!   RISC0_DEV_MODE=1 cargo test -p open-zk-host --features "risczero,kona" \
-//!     --test range_ethereum_risczero_e2e -- --ignored --nocapture
+//!   RISC0_DEV_MODE=1 cargo test -p open-zk-host --features "risc0,kona" \
+//!     --test range_ethereum_risc0_e2e -- --ignored --nocapture
 
-#![cfg(all(feature = "risczero", feature = "kona"))]
+#![cfg(all(feature = "risc0", feature = "kona"))]
 
 use alloy_primitives::B256;
 use open_zk_core::traits::{ProverBackend, WitnessProvider};
@@ -70,7 +70,7 @@ async fn get_l2_output_root(block_number: u64) -> B256 {
 /// Full E2E: witness generation → RISC Zero execute (dev mode) → journal verification.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
-async fn test_range_ethereum_risczero_e2e_devnet() {
+async fn test_range_ethereum_risc0_e2e_devnet() {
     init_tracing();
 
     // Step 1: Get devnet state
@@ -114,8 +114,8 @@ async fn test_range_ethereum_risczero_e2e_devnet() {
     };
 
     // Step 4: Load the range-ethereum ELF (built by risc0-build)
-    let elf = open_zk_host::elf::risczero::GUEST_RANGE_ETHEREUM_ELF;
-    let image_id = open_zk_host::elf::risczero::GUEST_RANGE_ETHEREUM_ID;
+    let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ELF;
+    let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ID;
     let program = RiscZeroProgram::new("range-ethereum", image_id, elf.to_vec());
 
     // Step 5: Execute in dev mode

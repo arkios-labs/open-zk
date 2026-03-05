@@ -60,7 +60,7 @@ l2_rpc_url = "https://your-rollup.rpc.endpoint"
 l1_beacon_url = "https://your-beacon-node:5052"
 
 [proving]
-backend = "sp1"                 # "sp1" | "risczero" | "mock"
+backend = "sp1"                 # "sp1" | "risc0" | "mock"
 mode = "beacon"                 # "beacon" (validity) | "sentinel" (fault proof)
 security = "standard"           # "maximum" | "standard" | "economy"
 target_finality_secs = 1800     # Target finality time in seconds
@@ -72,7 +72,7 @@ max_concurrent_proofs = 4       # Parallel proof jobs
 
 | Field | Values | Default | Description |
 |-------|--------|---------|-------------|
-| `backend` | `sp1`, `risczero`, `mock` | `sp1` | zkVM backend to use |
+| `backend` | `sp1`, `risc0`, `mock` | `sp1` | zkVM backend to use |
 | `mode` | `beacon`, `sentinel` | `beacon` | Proof mode (validity vs fault proof) |
 | `security` | `maximum`, `standard`, `economy` | `standard` | Security / cost trade-off level |
 | `target_finality_secs` | seconds | `1800` | Target finality time |
@@ -235,7 +235,7 @@ graph LR
 | `open-zk-orchestrator` | `crates/orchestrator` | Orchestration engine (Beacon / Sentinel loops) |
 | `open-zk-contracts` | `crates/contracts` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
 | `open-zk-cli` | `crates/cli` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
-| `open-zk-build-risczero` | `build/risczero` | RISC Zero guest ELF builder |
+| `open-zk-build-risc0` | `build/risc0` | RISC Zero guest ELF builder |
 
 **Guest Programs** (compiled separately, not workspace members):
 
@@ -282,7 +282,7 @@ just ci
 just guest-build
 
 # RISC Zero guest (via risc0-build)
-cargo build -p open-zk-build-risczero --features rebuild-guest,debug-guest-build
+cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 ```
 
 ## Proving Flow
