@@ -88,59 +88,6 @@ mod inner {
         )
     }
 
-    /// Serialize preimages using the legacy wire format.
-    ///
-    /// Wire format: `[count: 4 LE]` repeated `[key: 32][value_len: 4 LE][value: N]`.
-    /// Kept for backward compatibility with `PreimageStore::from_raw_bytes()`.
-    pub fn serialize_preimages_legacy(preimages: &HashMap<B256, Vec<u8>>) -> Vec<u8> {
-        let mut buf = Vec::new();
-        buf.extend_from_slice(&(preimages.len() as u32).to_le_bytes());
-        for (key, value) in preimages {
-            buf.extend_from_slice(key.as_slice());
-            buf.extend_from_slice(&(value.len() as u32).to_le_bytes());
-            buf.extend_from_slice(value);
-        }
-        buf
-    }
-
-    /// Deserialize preimages from legacy wire format bytes.
-    pub fn deserialize_preimages_legacy(data: &[u8]) -> Option<HashMap<B256, Vec<u8>>> {
-        let mut offset = 0;
-
-        if offset + 4 > data.len() {
-            return None;
-        }
-        let count =
-            u32::from_le_bytes(data[offset..offset + 4].try_into().ok()?) as usize;
-        offset += 4;
-
-        let mut map = HashMap::with_capacity(count);
-        for _ in 0..count {
-            if offset + 32 > data.len() {
-                return None;
-            }
-            let key = B256::from_slice(&data[offset..offset + 32]);
-            offset += 32;
-
-            if offset + 4 > data.len() {
-                return None;
-            }
-            let value_len =
-                u32::from_le_bytes(data[offset..offset + 4].try_into().ok()?) as usize;
-            offset += 4;
-
-            if offset + value_len > data.len() {
-                return None;
-            }
-            let value = data[offset..offset + value_len].to_vec();
-            offset += value_len;
-
-            map.insert(key, value);
-        }
-
-        Some(map)
-    }
-
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -204,25 +151,6 @@ mod inner {
             let serialized = serialize_preimages(&map);
             let deserialized = deserialize_preimages(&serialized).unwrap();
             assert!(deserialized.is_empty());
-        }
-
-        #[test]
-        fn legacy_serialize_deserialize_roundtrip() {
-            let mut map = HashMap::new();
-            map.insert(B256::repeat_byte(0x01), vec![0xDE, 0xAD]);
-            map.insert(B256::repeat_byte(0x02), vec![0xBE, 0xEF, 0xCA, 0xFE]);
-            map.insert(B256::repeat_byte(0x03), vec![]);
-
-            let serialized = serialize_preimages_legacy(&map);
-            let deserialized = deserialize_preimages_legacy(&serialized).unwrap();
-
-            assert_eq!(map, deserialized);
-        }
-
-        #[test]
-        fn legacy_deserialize_truncated_returns_none() {
-            assert!(deserialize_preimages_legacy(&[]).is_none());
-            assert!(deserialize_preimages_legacy(&[1, 0, 0, 0]).is_none());
         }
 
         #[test]

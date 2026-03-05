@@ -18,9 +18,9 @@ use alloy_rpc_types_eth::BlockNumberOrTag;
 use async_trait::async_trait;
 use kona_host::single::{SingleChainHintHandler, SingleChainHost, SingleChainLocalInputs};
 use kona_host::{
-    OnlineHostBackend, PreimageServer, SharedKeyValueStore, SplitKeyValueStore,
+    KeyValueStore, OnlineHostBackend, PreimageServer, SharedKeyValueStore, SplitKeyValueStore,
 };
-use kona_preimage::{BidirectionalChannel, HintReader, HintWriter, OracleReader, OracleServer};
+use kona_preimage::{BidirectionalChannel, HintReader, HintWriter, OracleReader, OracleServer, PreimageKey};
 use open_zk_core::traits::{RawWitness, WitnessProvider};
 use open_zk_core::types::BootInfo;
 use open_zk_core::types::ProofRequest;
@@ -576,8 +576,20 @@ impl WitnessProvider for RpcWitnessProvider {
         // Step 6: Run the witness collection pipeline
         let store = self.collect_witness(&host).await?;
 
-        // Step 7: Extract and serialize preimages
-        let preimages = store.snapshot();
+        // Step 7: Inject local preimage keys into the store.
+        // During witness collection, SplitKeyValueStore routes local key reads to
+        // SingleChainLocalInputs, which are NOT captured in our_store. The guest's
+        // BootInfo::load() needs these keys, so we inject them before serialization.
+        let mut preimages = store.snapshot();
+        let local_kv = SingleChainLocalInputs::new(host.clone());
+        for local_key_index in 1u64..=7 {
+            let preimage_key = PreimageKey::new_local(local_key_index);
+            let key_bytes: [u8; 32] = preimage_key.into();
+            let b256_key = B256::from(key_bytes);
+            if let Some(value) = local_kv.get(b256_key) {
+                preimages.insert(b256_key, value);
+            }
+        }
         let oracle_data = serialize_preimages(&preimages);
 
         // Build BootInfo for the guest program

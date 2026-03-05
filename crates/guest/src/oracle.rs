@@ -3,9 +3,7 @@
 //! Stores the preimage KV data from the host witness and serves lookups
 //! to kona's derivation pipeline. All data is read-only after construction.
 //!
-//! Supports two deserialization formats:
-//! - **rkyv** (preferred): zero-copy friendly via `from_rkyv_bytes()`
-//! - **raw** (legacy): custom wire format via `from_raw_bytes()`
+//! Deserialized from rkyv-encoded bytes via `from_rkyv_bytes()`.
 
 extern crate alloc;
 
@@ -41,54 +39,15 @@ impl PreimageStore {
 
     /// Deserialize from rkyv-encoded bytes.
     ///
-    /// This is the preferred deserialization path. The host serializes
-    /// a `BTreeMap<[u8; 32], Vec<u8>>` with `rkyv::to_bytes()`.
+    /// The host serializes a `BTreeMap<[u8; 32], Vec<u8>>` with `rkyv::to_bytes()`.
+    /// Uses `AlignedVec` to ensure proper alignment for rkyv's archived root.
     pub fn from_rkyv_bytes(raw: &[u8]) -> Option<Self> {
-        let archived = rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(raw).ok()?;
+        let mut aligned = rkyv::AlignedVec::with_capacity(raw.len());
+        aligned.extend_from_slice(raw);
+        let archived =
+            rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(&aligned).ok()?;
         let data: BTreeMap<[u8; 32], Vec<u8>> =
             archived.deserialize(&mut rkyv::Infallible).ok()?;
-        Some(Self {
-            data: Arc::new(data),
-        })
-    }
-
-    /// Deserialize from raw bytes produced by the legacy `serialize_preimages()`.
-    ///
-    /// Wire format: `[count: 4 bytes LE]` repeated `[key: 32][value_len: 4 LE][value: N]`
-    pub fn from_raw_bytes(raw: &[u8]) -> Option<Self> {
-        let mut offset = 0;
-
-        if offset + 4 > raw.len() {
-            return None;
-        }
-        let count = u32::from_le_bytes(raw[offset..offset + 4].try_into().ok()?) as usize;
-        offset += 4;
-
-        let mut data = BTreeMap::new();
-        for _ in 0..count {
-            if offset + 32 > raw.len() {
-                return None;
-            }
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&raw[offset..offset + 32]);
-            offset += 32;
-
-            if offset + 4 > raw.len() {
-                return None;
-            }
-            let value_len =
-                u32::from_le_bytes(raw[offset..offset + 4].try_into().ok()?) as usize;
-            offset += 4;
-
-            if offset + value_len > raw.len() {
-                return None;
-            }
-            let value = raw[offset..offset + value_len].to_vec();
-            offset += value_len;
-
-            data.insert(key, value);
-        }
-
         Some(Self {
             data: Arc::new(data),
         })
