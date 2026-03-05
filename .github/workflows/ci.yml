@@ -64,6 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.93.0
+      - uses: foundry-rs/foundry-toolchain@v1
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -122,6 +123,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: foundry-rs/foundry-toolchain@v1
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
