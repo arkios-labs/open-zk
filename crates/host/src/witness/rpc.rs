@@ -20,7 +20,9 @@ use kona_host::single::{SingleChainHintHandler, SingleChainHost, SingleChainLoca
 use kona_host::{
     KeyValueStore, OnlineHostBackend, PreimageServer, SharedKeyValueStore, SplitKeyValueStore,
 };
-use kona_preimage::{BidirectionalChannel, HintReader, HintWriter, OracleReader, OracleServer, PreimageKey};
+use kona_preimage::{
+    BidirectionalChannel, HintReader, HintWriter, OracleReader, OracleServer, PreimageKey,
+};
 use open_zk_core::traits::{RawWitness, WitnessProvider};
 use open_zk_core::types::BootInfo;
 use open_zk_core::types::ProofRequest;
@@ -187,15 +189,16 @@ impl RpcWitnessProvider {
         }
 
         // Write to temp file
-        let tmp_path = std::env::temp_dir().join(format!(
-            "open-zk-rollup-config-{}.json",
-            std::process::id()
-        ));
+        let tmp_path =
+            std::env::temp_dir().join(format!("open-zk-rollup-config-{}.json", std::process::id()));
         let config_str = serde_json::to_string_pretty(&rollup_config).map_err(|e| {
             RpcWitnessError::Serialization(format!("rollup config serialization: {e}"))
         })?;
         std::fs::write(&tmp_path, &config_str).map_err(|e| {
-            RpcWitnessError::Fetch(format!("failed to write rollup config to {}: {e}", tmp_path.display()))
+            RpcWitnessError::Fetch(format!(
+                "failed to write rollup config to {}: {e}",
+                tmp_path.display()
+            ))
         })?;
 
         info!(path = %tmp_path.display(), "wrote rollup config to temp file");
@@ -210,10 +213,7 @@ impl RpcWitnessProvider {
     ///
     /// Tries `debug_chainConfig` on the L1 node first. If unavailable, generates a
     /// default config with all post-merge hardforks activated from genesis.
-    async fn ensure_l1_config(
-        &self,
-        l1_chain_id: u64,
-    ) -> Result<PathBuf, RpcWitnessError> {
+    async fn ensure_l1_config(&self, l1_chain_id: u64) -> Result<PathBuf, RpcWitnessError> {
         let l1_url: url::Url = self
             .l1_rpc_url
             .parse()
@@ -221,43 +221,42 @@ impl RpcWitnessProvider {
         let l1_provider = ProviderBuilder::new().connect_http(l1_url);
 
         // Try debug_chainConfig from L1 node (geth-compatible JSON)
-        let l1_config: serde_json::Value =
-            if let Ok(config) = l1_provider
-                .raw_request::<_, serde_json::Value>("debug_chainConfig".into(), ())
-                .await
-            {
-                debug!("fetched L1 chain config from debug_chainConfig");
-                config
-            } else {
-                // Generate default config for devnet (all forks activated from genesis).
-                // Uses camelCase field names matching alloy_genesis::ChainConfig serde format.
-                debug!(chain_id = l1_chain_id, "generating default L1 chain config for devnet");
-                serde_json::json!({
-                    "chainId": l1_chain_id,
-                    "homesteadBlock": 0,
-                    "eip150Block": 0,
-                    "eip155Block": 0,
-                    "eip158Block": 0,
-                    "byzantiumBlock": 0,
-                    "constantinopleBlock": 0,
-                    "petersburgBlock": 0,
-                    "istanbulBlock": 0,
-                    "berlinBlock": 0,
-                    "londonBlock": 0,
-                    "shanghaiTime": 0,
-                    "cancunTime": 0,
-                    "terminalTotalDifficulty": "0",
-                    "terminalTotalDifficultyPassed": true
-                })
-            };
+        let l1_config: serde_json::Value = if let Ok(config) = l1_provider
+            .raw_request::<_, serde_json::Value>("debug_chainConfig".into(), ())
+            .await
+        {
+            debug!("fetched L1 chain config from debug_chainConfig");
+            config
+        } else {
+            // Generate default config for devnet (all forks activated from genesis).
+            // Uses camelCase field names matching alloy_genesis::ChainConfig serde format.
+            debug!(
+                chain_id = l1_chain_id,
+                "generating default L1 chain config for devnet"
+            );
+            serde_json::json!({
+                "chainId": l1_chain_id,
+                "homesteadBlock": 0,
+                "eip150Block": 0,
+                "eip155Block": 0,
+                "eip158Block": 0,
+                "byzantiumBlock": 0,
+                "constantinopleBlock": 0,
+                "petersburgBlock": 0,
+                "istanbulBlock": 0,
+                "berlinBlock": 0,
+                "londonBlock": 0,
+                "shanghaiTime": 0,
+                "cancunTime": 0,
+                "terminalTotalDifficulty": "0",
+                "terminalTotalDifficultyPassed": true
+            })
+        };
 
-        let tmp_path = std::env::temp_dir().join(format!(
-            "open-zk-l1-config-{}.json",
-            std::process::id()
-        ));
-        let config_str = serde_json::to_string_pretty(&l1_config).map_err(|e| {
-            RpcWitnessError::Serialization(format!("l1 config serialization: {e}"))
-        })?;
+        let tmp_path =
+            std::env::temp_dir().join(format!("open-zk-l1-config-{}.json", std::process::id()));
+        let config_str = serde_json::to_string_pretty(&l1_config)
+            .map_err(|e| RpcWitnessError::Serialization(format!("l1 config serialization: {e}")))?;
         std::fs::write(&tmp_path, &config_str).map_err(|e| {
             RpcWitnessError::Fetch(format!(
                 "failed to write L1 config to {}: {e}",
@@ -313,9 +312,8 @@ impl RpcWitnessProvider {
             ))
         })?;
         // Normalize JSON: parse and re-serialize to get canonical form
-        let value: serde_json::Value = serde_json::from_slice(&contents).map_err(|e| {
-            RpcWitnessError::Fetch(format!("invalid rollup config JSON: {e}"))
-        })?;
+        let value: serde_json::Value = serde_json::from_slice(&contents)
+            .map_err(|e| RpcWitnessError::Fetch(format!("invalid rollup config JSON: {e}")))?;
         let canonical = serde_json::to_vec(&value).map_err(|e| {
             RpcWitnessError::Serialization(format!("rollup config serialization: {e}"))
         })?;
@@ -353,7 +351,10 @@ impl RpcWitnessProvider {
                     }
                 }
             }
-            warn!(block = block_number, "optimism_outputAtBlock failed on OP Node, trying L2 node");
+            warn!(
+                block = block_number,
+                "optimism_outputAtBlock failed on OP Node, trying L2 node"
+            );
         }
 
         // Try optimism_outputAtBlock on L2 node (some nodes support this)
@@ -382,9 +383,7 @@ impl RpcWitnessProvider {
             .get_block_by_number(BlockNumberOrTag::Number(block_number))
             .await
             .map_err(|e| RpcWitnessError::Fetch(format!("L2 block {block_number}: {e}")))?
-            .ok_or_else(|| {
-                RpcWitnessError::Fetch(format!("L2 block {block_number} not found"))
-            })?;
+            .ok_or_else(|| RpcWitnessError::Fetch(format!("L2 block {block_number} not found")))?;
 
         // output_root = keccak256(version_byte[32] ++ state_root ++ withdrawals_root ++ block_hash)
         let mut payload = [0u8; 128];
@@ -435,19 +434,18 @@ impl RpcWitnessProvider {
             .map_err(|e| RpcWitnessError::Connection(e.to_string()))?;
 
         // Create bidirectional channels for oracle and hint protocols
-        let hint_channel = BidirectionalChannel::new()
-            .map_err(|e| RpcWitnessError::Connection(e.to_string()))?;
-        let preimage_channel = BidirectionalChannel::new()
-            .map_err(|e| RpcWitnessError::Connection(e.to_string()))?;
+        let hint_channel =
+            BidirectionalChannel::new().map_err(|e| RpcWitnessError::Connection(e.to_string()))?;
+        let preimage_channel =
+            BidirectionalChannel::new().map_err(|e| RpcWitnessError::Connection(e.to_string()))?;
 
         // Create the online host backend that fetches preimages from RPC on demand
-        let backend =
-            OnlineHostBackend::<SingleChainHost, SingleChainHintHandler>::new(
-                host.clone(),
-                kv,
-                providers,
-                SingleChainHintHandler,
-            );
+        let backend = OnlineHostBackend::<SingleChainHost, SingleChainHintHandler>::new(
+            host.clone(),
+            kv,
+            providers,
+            SingleChainHintHandler,
+        );
 
         // Create the preimage server (handles oracle requests + hint routing)
         let server = PreimageServer::new(
@@ -505,10 +503,7 @@ impl RpcWitnessProvider {
 impl WitnessProvider for RpcWitnessProvider {
     type Error = RpcWitnessError;
 
-    async fn generate_witness(
-        &self,
-        request: &ProofRequest,
-    ) -> Result<RawWitness, Self::Error> {
+    async fn generate_witness(&self, request: &ProofRequest) -> Result<RawWitness, Self::Error> {
         // Step 1: Ensure rollup config is available (fetch from OP Node if needed)
         let rollup_config_path = self.ensure_rollup_config().await?;
 
@@ -528,10 +523,7 @@ impl WitnessProvider for RpcWitnessProvider {
             .await
             .map_err(|e| RpcWitnessError::Fetch(format!("L2 start block: {e}")))?
             .ok_or_else(|| {
-                RpcWitnessError::Fetch(format!(
-                    "L2 block {} not found",
-                    request.l2_start_block
-                ))
+                RpcWitnessError::Fetch(format!("L2 block {} not found", request.l2_start_block))
             })?;
         let agreed_l2_head_hash = start_block.header.hash;
         debug!(
@@ -553,9 +545,8 @@ impl WitnessProvider for RpcWitnessProvider {
         // Step 4: Ensure L1 chain config is available.
         // Parse rollup config to extract L1 chain ID for the L1 config lookup.
         let rollup_json: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(&rollup_config_path).map_err(|e| {
-                RpcWitnessError::Fetch(format!("re-read rollup config: {e}"))
-            })?,
+            &std::fs::read_to_string(&rollup_config_path)
+                .map_err(|e| RpcWitnessError::Fetch(format!("re-read rollup config: {e}")))?,
         )
         .map_err(|e| RpcWitnessError::Fetch(format!("re-parse rollup config: {e}")))?;
         let l1_chain_id = rollup_json

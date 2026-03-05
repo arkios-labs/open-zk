@@ -70,7 +70,10 @@ pub async fn execute(args: FastTrackArgs) -> anyhow::Result<()> {
     );
 
     // Parse deployer key to verify it's valid hex
-    let deployer_key = args.deployer_key.strip_prefix("0x").unwrap_or(&args.deployer_key);
+    let deployer_key = args
+        .deployer_key
+        .strip_prefix("0x")
+        .unwrap_or(&args.deployer_key);
     let _owner_key = args.owner_key.strip_prefix("0x").unwrap_or(&args.owner_key);
 
     anyhow::ensure!(
@@ -227,11 +230,7 @@ fn deploy_oracle_placeholder(args: &FastTrackArgs) -> anyhow::Result<Address> {
 
 /// Placeholder for DisputeGame deployment.
 fn deploy_dispute_placeholder(args: &FastTrackArgs) -> anyhow::Result<Address> {
-    let key_bytes = hex::decode(
-        args.owner_key
-            .strip_prefix("0x")
-            .unwrap_or(&args.owner_key),
-    )?;
+    let key_bytes = hex::decode(args.owner_key.strip_prefix("0x").unwrap_or(&args.owner_key))?;
     let hash = alloy_primitives::keccak256(&key_bytes);
     Ok(Address::from_slice(&hash[..20]))
 }

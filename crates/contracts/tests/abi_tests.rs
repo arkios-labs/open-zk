@@ -15,8 +15,7 @@ fn submit_sp1_proof_calldata_roundtrip() {
     let encoded = call.abi_encode();
     assert!(!encoded.is_empty());
 
-    let decoded =
-        IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::abi_decode(&encoded).unwrap();
+    let decoded = IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::abi_decode(&encoded).unwrap();
     match decoded {
         IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::submitSp1Proof(inner) => {
             assert_eq!(inner.publicValues.len(), 192);
@@ -36,8 +35,7 @@ fn submit_risc0_proof_calldata_roundtrip() {
     };
 
     let encoded = call.abi_encode();
-    let decoded =
-        IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::abi_decode(&encoded).unwrap();
+    let decoded = IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::abi_decode(&encoded).unwrap();
     match decoded {
         IOpenZkL2OutputOracle::IOpenZkL2OutputOracleCalls::submitRisc0Proof(inner) => {
             assert_eq!(inner.journalBytes.len(), 192);

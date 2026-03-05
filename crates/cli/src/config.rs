@@ -120,8 +120,7 @@ impl CliConfig {
     /// In mock mode, proofs are generated instantly without real ZK computation.
     /// This is useful for devnet testing and CI pipelines.
     pub fn is_mock_mode(&self) -> bool {
-        self.proving.backend == "mock"
-            || std::env::var("SP1_PROVER").is_ok_and(|v| v == "mock")
+        self.proving.backend == "mock" || std::env::var("SP1_PROVER").is_ok_and(|v| v == "mock")
     }
 
     /// Generate a default TOML config string.

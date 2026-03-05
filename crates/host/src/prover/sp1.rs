@@ -148,9 +148,8 @@ impl ProverBackend for Sp1ProverBackend {
             return Ok(true);
         }
 
-        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues =
-            bincode::deserialize(&proof.proof_bytes)
-                .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
+        let sp1_proof: sp1_sdk::SP1ProofWithPublicValues = bincode::deserialize(&proof.proof_bytes)
+            .map_err(|e| Sp1ProverError::VerificationFailed(e.to_string()))?;
 
         let elf = program.to_elf();
         let pk = self

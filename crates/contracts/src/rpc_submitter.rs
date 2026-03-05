@@ -32,12 +32,7 @@ impl RpcProofSubmitter {
         }
     }
 
-    fn build_provider(
-        &self,
-    ) -> Result<
-        impl alloy_provider::Provider + Clone,
-        RpcSubmitterError,
-    > {
+    fn build_provider(&self) -> Result<impl alloy_provider::Provider + Clone, RpcSubmitterError> {
         let url: url::Url = self
             .rpc_url
             .parse()
@@ -51,9 +46,7 @@ impl RpcProofSubmitter {
             alloy_provider::network::EthereumWallet::from(pk)
         };
 
-        let provider = ProviderBuilder::new()
-            .wallet(signer)
-            .connect_http(url);
+        let provider = ProviderBuilder::new().wallet(signer).connect_http(url);
 
         Ok(provider)
     }
@@ -75,10 +68,7 @@ impl ProofSubmitter for RpcProofSubmitter {
         let tx_hash = match proof.backend {
             ZkvmBackend::Sp1 => {
                 let pending = oracle
-                    .submitSp1Proof(
-                        public_values.into(),
-                        proof.proof_bytes.clone().into(),
-                    )
+                    .submitSp1Proof(public_values.into(), proof.proof_bytes.clone().into())
                     .send()
                     .await
                     .map_err(|e| RpcSubmitterError::ContractCall(e.to_string()))?;
@@ -91,10 +81,7 @@ impl ProofSubmitter for RpcProofSubmitter {
             }
             ZkvmBackend::RiscZero => {
                 let pending = oracle
-                    .submitRisc0Proof(
-                        public_values.into(),
-                        proof.proof_bytes.clone().into(),
-                    )
+                    .submitRisc0Proof(public_values.into(), proof.proof_bytes.clone().into())
                     .send()
                     .await
                     .map_err(|e| RpcSubmitterError::ContractCall(e.to_string()))?;

@@ -98,7 +98,7 @@ async fn verify_journal(result: &open_zk_core::types::ProofArtifact) {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_range_ethereum_sp1_e2e_devnet() {
-    use open_zk_host::prover::{Sp1ProverBackend, Sp1Program, Sp1Witness};
+    use open_zk_host::prover::{Sp1Program, Sp1ProverBackend, Sp1Witness};
     use sp1_sdk::SP1Stdin;
 
     init_tracing();
@@ -133,7 +133,7 @@ async fn test_range_ethereum_sp1_e2e_devnet() {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_range_ethereum_risc0_e2e_devnet() {
-    use open_zk_host::prover::{RiscZeroProverBackend, RiscZeroProgram, RiscZeroWitness};
+    use open_zk_host::prover::{RiscZeroProgram, RiscZeroProverBackend, RiscZeroWitness};
 
     init_tracing();
     let witness = generate_witness().await;
@@ -161,5 +161,7 @@ async fn test_range_ethereum_risc0_e2e_devnet() {
     println!("  public_values: {} bytes", result.public_values.len());
 
     verify_journal(&result).await;
-    println!("E2E test PASSED — range-ethereum guest correctly derived L2 state transition (RISC Zero)");
+    println!(
+        "E2E test PASSED — range-ethereum guest correctly derived L2 state transition (RISC Zero)"
+    );
 }

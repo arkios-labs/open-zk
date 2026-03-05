@@ -80,9 +80,14 @@ async fn test_rollup_config_fetch_from_op_node() {
         .await
         .unwrap();
 
-    println!("Rollup config keys: {:?}", config.as_object().unwrap().keys().collect::<Vec<_>>());
-    assert!(config.get("l2_chain_id").is_some() || config.get("chain_id").is_some(),
-        "rollup config should contain chain ID");
+    println!(
+        "Rollup config keys: {:?}",
+        config.as_object().unwrap().keys().collect::<Vec<_>>()
+    );
+    assert!(
+        config.get("l2_chain_id").is_some() || config.get("chain_id").is_some(),
+        "rollup config should contain chain ID"
+    );
     println!("Rollup config fetched successfully from OP Node");
 }
 
@@ -123,12 +128,21 @@ async fn test_real_witness_generation_single_block() {
             println!("  boot_info:  {} bytes", witness.boot_info.len());
             println!("  oracle_data: {} bytes", witness.oracle_data.len());
             println!("  blob_data:   {} bytes", witness.blob_data.len());
-            assert!(!witness.boot_info.is_empty(), "boot_info should not be empty");
-            assert!(!witness.oracle_data.is_empty(), "oracle_data should not be empty");
+            assert!(
+                !witness.boot_info.is_empty(),
+                "boot_info should not be empty"
+            );
+            assert!(
+                !witness.oracle_data.is_empty(),
+                "oracle_data should not be empty"
+            );
         }
         Err(e) => {
             let elapsed = start.elapsed();
-            println!("Witness generation failed after {:.2}s: {e}", elapsed.as_secs_f64());
+            println!(
+                "Witness generation failed after {:.2}s: {e}",
+                elapsed.as_secs_f64()
+            );
             println!("Error details: {e:?}");
             panic!("Witness generation failed: {e}");
         }

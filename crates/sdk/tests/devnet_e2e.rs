@@ -17,9 +17,7 @@
 
 use alloy_primitives::B256;
 use open_zk::core::traits::{ProverBackend, WitnessProvider};
-use open_zk::core::types::{
-    ProvingMode, SecurityLevel, StateTransitionJournal, ZkvmBackend,
-};
+use open_zk::core::types::{ProvingMode, SecurityLevel, StateTransitionJournal, ZkvmBackend};
 use open_zk::OpenZkConfig;
 use open_zk_contracts::client::{MockProofSubmitter, ProofSubmitter};
 use open_zk_host::prover::{MockProgram, MockProverBackend, MockWitness};
@@ -52,7 +50,10 @@ async fn test_devnet_connectivity() {
     // OP Stack devnet: L1 = 900, L2 = 901
     assert!(l1_chain_id > 0, "L1 chain ID should be non-zero");
     assert!(l2_chain_id > 0, "L2 chain ID should be non-zero");
-    assert_ne!(l1_chain_id, l2_chain_id, "L1 and L2 should have different chain IDs");
+    assert_ne!(
+        l1_chain_id, l2_chain_id,
+        "L1 and L2 should have different chain IDs"
+    );
 
     println!("L1 chain ID: {l1_chain_id}");
     println!("L2 chain ID: {l2_chain_id}");
@@ -72,7 +73,10 @@ async fn test_devnet_l2_block_production() {
     tokio::time::sleep(Duration::from_secs(3)).await;
     let block_2 = l2_provider.get_block_number().await.unwrap();
 
-    assert!(block_2 > block_1, "L2 should be producing blocks (was {block_1}, now {block_2})");
+    assert!(
+        block_2 > block_1,
+        "L2 should be producing blocks (was {block_1}, now {block_2})"
+    );
     println!("L2 block progression: {block_1} → {block_2}");
 }
 
@@ -222,7 +226,10 @@ async fn test_devnet_rpc_chain_monitor() {
         .await
     {
         Ok(Some(b)) => {
-            println!("L1 finalized block: {} hash: {}", b.header.number, b.header.hash);
+            println!(
+                "L1 finalized block: {} hash: {}",
+                b.header.number, b.header.hash
+            );
             b
         }
         _ => {
@@ -265,5 +272,8 @@ async fn test_devnet_rpc_chain_monitor() {
 
     assert!(state.l1_block_number > 0);
     assert!(state.l2_safe_block > 0);
-    println!("Chain state: L1={} L2_safe={}", state.l1_block_number, state.l2_safe_block);
+    println!(
+        "Chain state: L1={} L2_safe={}",
+        state.l1_block_number, state.l2_safe_block
+    );
 }

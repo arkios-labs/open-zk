@@ -16,7 +16,6 @@ use kona_preimage::errors::{PreimageOracleError, PreimageOracleResult};
 use kona_preimage::{HintWriterClient, PreimageKey, PreimageOracleClient};
 use rkyv::Deserialize as _;
 
-
 /// Preimage store backed by host-provided data.
 ///
 /// Implements [`PreimageOracleClient`] and [`HintWriterClient`] (no-op),
@@ -44,10 +43,8 @@ impl PreimageStore {
     pub fn from_rkyv_bytes(raw: &[u8]) -> Option<Self> {
         let mut aligned = rkyv::AlignedVec::with_capacity(raw.len());
         aligned.extend_from_slice(raw);
-        let archived =
-            rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(&aligned).ok()?;
-        let data: BTreeMap<[u8; 32], Vec<u8>> =
-            archived.deserialize(&mut rkyv::Infallible).ok()?;
+        let archived = rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(&aligned).ok()?;
+        let data: BTreeMap<[u8; 32], Vec<u8>> = archived.deserialize(&mut rkyv::Infallible).ok()?;
         Some(Self {
             data: Arc::new(data),
         })

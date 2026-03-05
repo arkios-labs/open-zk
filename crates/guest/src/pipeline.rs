@@ -11,8 +11,8 @@ use alloy_consensus::Sealed;
 use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::B256;
 use kona_derive::DataAvailabilityProvider;
-use kona_executor::TrieDBProvider;
 use kona_driver::Driver;
+use kona_executor::TrieDBProvider;
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_proof::l1::{OracleL1ChainProvider, OraclePipeline};
 use kona_proof::l2::OracleL2ChainProvider;
@@ -93,14 +93,16 @@ async fn run_pipeline<F: DaSourceFactory>(
     let rollup_config = Arc::new(boot.rollup_config.clone());
     let l1_config = boot.l1_config.clone();
 
-    let safe_head_hash =
-        fetch_safe_head_hash(caching_oracle.as_ref(), boot.agreed_l2_output_root)
-            .await
-            .expect("failed to fetch safe head hash");
+    let safe_head_hash = fetch_safe_head_hash(caching_oracle.as_ref(), boot.agreed_l2_output_root)
+        .await
+        .expect("failed to fetch safe head hash");
 
     let mut l1_provider = OracleL1ChainProvider::new(boot.l1_head, caching_oracle.clone());
-    let mut l2_provider =
-        OracleL2ChainProvider::new(safe_head_hash, rollup_config.clone(), caching_oracle.clone());
+    let mut l2_provider = OracleL2ChainProvider::new(
+        safe_head_hash,
+        rollup_config.clone(),
+        caching_oracle.clone(),
+    );
 
     let safe_head = l2_provider
         .header_by_hash(safe_head_hash)

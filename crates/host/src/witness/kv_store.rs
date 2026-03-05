@@ -66,10 +66,8 @@ mod inner {
     /// Produces bytes consumable by `PreimageStore::from_rkyv_bytes()` on the guest side.
     /// Internally serializes a `BTreeMap<[u8; 32], Vec<u8>>` via rkyv.
     pub fn serialize_preimages(preimages: &HashMap<B256, Vec<u8>>) -> Vec<u8> {
-        let map: BTreeMap<[u8; 32], Vec<u8>> = preimages
-            .iter()
-            .map(|(k, v)| (k.0, v.clone()))
-            .collect();
+        let map: BTreeMap<[u8; 32], Vec<u8>> =
+            preimages.iter().map(|(k, v)| (k.0, v.clone())).collect();
         rkyv::to_bytes::<_, 256>(&map)
             .expect("rkyv serialization failed")
             .to_vec()
@@ -77,15 +75,9 @@ mod inner {
 
     /// Deserialize preimages from rkyv bytes produced by [`serialize_preimages`].
     pub fn deserialize_preimages(data: &[u8]) -> Option<HashMap<B256, Vec<u8>>> {
-        let archived =
-            rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(data).ok()?;
-        let map: BTreeMap<[u8; 32], Vec<u8>> =
-            archived.deserialize(&mut rkyv::Infallible).ok()?;
-        Some(
-            map.into_iter()
-                .map(|(k, v)| (B256::from(k), v))
-                .collect(),
-        )
+        let archived = rkyv::check_archived_root::<BTreeMap<[u8; 32], Vec<u8>>>(data).ok()?;
+        let map: BTreeMap<[u8; 32], Vec<u8>> = archived.deserialize(&mut rkyv::Infallible).ok()?;
+        Some(map.into_iter().map(|(k, v)| (B256::from(k), v)).collect())
     }
 
     #[cfg(test)]
@@ -119,12 +111,8 @@ mod inner {
         #[test]
         fn arc_memory_kv_store_snapshot() {
             let mut store = ArcMemoryKvStore::new();
-            store
-                .set(B256::repeat_byte(0x01), vec![0xAA])
-                .unwrap();
-            store
-                .set(B256::repeat_byte(0x02), vec![0xBB])
-                .unwrap();
+            store.set(B256::repeat_byte(0x01), vec![0xAA]).unwrap();
+            store.set(B256::repeat_byte(0x02), vec![0xBB]).unwrap();
 
             let snap = store.snapshot();
             assert_eq!(snap.len(), 2);

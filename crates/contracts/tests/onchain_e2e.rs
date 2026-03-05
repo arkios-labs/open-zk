@@ -84,11 +84,8 @@ async fn test_onchain_sp1_proof_submission() {
         cycle_count: Some(100_000_000),
     };
 
-    let submitter = RpcProofSubmitter::new(
-        L1_RPC.to_string(),
-        oracle_addr,
-        DEPLOYER_KEY.to_string(),
-    );
+    let submitter =
+        RpcProofSubmitter::new(L1_RPC.to_string(), oracle_addr, DEPLOYER_KEY.to_string());
 
     let tx_hash = submitter
         .submit_proof(&journal, &proof)
@@ -138,11 +135,8 @@ async fn test_onchain_risc0_proof_submission() {
         cycle_count: Some(200_000_000),
     };
 
-    let submitter = RpcProofSubmitter::new(
-        L1_RPC.to_string(),
-        oracle_addr,
-        DEPLOYER_KEY.to_string(),
-    );
+    let submitter =
+        RpcProofSubmitter::new(L1_RPC.to_string(), oracle_addr, DEPLOYER_KEY.to_string());
 
     let tx_hash = submitter
         .submit_proof(&journal, &proof)

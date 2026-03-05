@@ -9,7 +9,7 @@ mod risc0;
 pub use mock::{MockProgram, MockProverBackend, MockWitness};
 
 #[cfg(feature = "sp1")]
-pub use self::sp1::{Sp1ProverBackend, Sp1Program, Sp1Witness};
+pub use self::sp1::{Sp1Program, Sp1ProverBackend, Sp1Witness};
 
 #[cfg(feature = "risc0")]
-pub use self::risc0::{RiscZeroProverBackend, RiscZeroProgram, RiscZeroWitness};
+pub use self::risc0::{RiscZeroProgram, RiscZeroProverBackend, RiscZeroWitness};

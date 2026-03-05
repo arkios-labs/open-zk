@@ -117,19 +117,15 @@ mod full {
 
         async fn get_state(&self) -> Result<ChainState, Self::Error> {
             // Create providers
-            let l1_provider = ProviderBuilder::new()
-                .connect_http(self.l1_rpc_url.clone());
-            let l2_provider = ProviderBuilder::new()
-                .connect_http(self.l2_rpc_url.clone());
+            let l1_provider = ProviderBuilder::new().connect_http(self.l1_rpc_url.clone());
+            let l2_provider = ProviderBuilder::new().connect_http(self.l2_rpc_url.clone());
 
             // 1. Fetch latest finalized L1 block
             let l1_block = l1_provider
                 .get_block_by_number(BlockNumberOrTag::Finalized)
                 .await
                 .map_err(|e| RpcMonitorError::L1Rpc(e.to_string()))?
-                .ok_or_else(|| {
-                    RpcMonitorError::L1Rpc("finalized block not found".to_string())
-                })?;
+                .ok_or_else(|| RpcMonitorError::L1Rpc("finalized block not found".to_string()))?;
 
             let l1_head = l1_block.header.hash;
             let l1_block_number = l1_block.header.number;
@@ -140,16 +136,13 @@ mod full {
                 .get_block_by_number(BlockNumberOrTag::Safe)
                 .await
                 .map_err(|e| RpcMonitorError::L2Rpc(e.to_string()))?
-                .ok_or_else(|| {
-                    RpcMonitorError::L2Rpc("safe block not found".to_string())
-                })?;
+                .ok_or_else(|| RpcMonitorError::L2Rpc("safe block not found".to_string()))?;
 
             let l2_safe_block = l2_block.header.number;
             debug!(l2_safe_block, "fetched L2 safe block");
 
             // 3. Fetch latest proven L2 block from L2OutputOracle contract
-            let call_data =
-                IOpenZkL2OutputOracle::latestBlockNumberCall {}.abi_encode();
+            let call_data = IOpenZkL2OutputOracle::latestBlockNumberCall {}.abi_encode();
             let call_result = l1_provider
                 .call(
                     alloy_rpc_types_eth::TransactionRequest::default()
@@ -161,13 +154,9 @@ mod full {
 
             let l2_proven_block = if call_result.len() >= 32 {
                 // Decode uint64 from ABI-encoded response (right-aligned in 32 bytes)
-                let bytes: [u8; 8] = call_result[24..32]
-                    .try_into()
-                    .map_err(|_| {
-                        RpcMonitorError::Contract(
-                            "invalid response length".to_string(),
-                        )
-                    })?;
+                let bytes: [u8; 8] = call_result[24..32].try_into().map_err(|_| {
+                    RpcMonitorError::Contract("invalid response length".to_string())
+                })?;
                 u64::from_be_bytes(bytes)
             } else {
                 warn!("oracle contract returned unexpected response, defaulting to 0");
@@ -187,14 +176,12 @@ mod full {
         async fn active_dispute(&self) -> Option<DisputeInfo> {
             let dispute_address = self.dispute_address?;
 
-            let l1_provider = ProviderBuilder::new()
-                .connect_http(self.l1_rpc_url.clone());
+            let l1_provider = ProviderBuilder::new().connect_http(self.l1_rpc_url.clone());
 
             // Query isDisputed for a range of recent blocks
             // In production, this would scan DisputeCreated events
             // For now, we check the latest proven block
-            let call_data =
-                IOpenZkL2OutputOracle::latestBlockNumberCall {}.abi_encode();
+            let call_data = IOpenZkL2OutputOracle::latestBlockNumberCall {}.abi_encode();
             let call_result = l1_provider
                 .call(
                     alloy_rpc_types_eth::TransactionRequest::default()
@@ -208,16 +195,13 @@ mod full {
                 return None;
             }
 
-            let latest_block = u64::from_be_bytes(
-                call_result[24..32].try_into().ok()?,
-            );
+            let latest_block = u64::from_be_bytes(call_result[24..32].try_into().ok()?);
 
             // Check if the latest block is disputed
-            let is_disputed_data =
-                open_zk_contracts::abi::IOpenZkDisputeGame::isDisputedCall {
-                    blockNumber: latest_block,
-                }
-                .abi_encode();
+            let is_disputed_data = open_zk_contracts::abi::IOpenZkDisputeGame::isDisputedCall {
+                blockNumber: latest_block,
+            }
+            .abi_encode();
 
             let disputed_result = l1_provider
                 .call(
@@ -264,19 +248,12 @@ mod full {
             .unwrap()
             .with_dispute_address(Address::repeat_byte(0x42));
 
-            assert_eq!(
-                monitor.dispute_address,
-                Some(Address::repeat_byte(0x42))
-            );
+            assert_eq!(monitor.dispute_address, Some(Address::repeat_byte(0x42)));
         }
 
         #[test]
         fn rpc_monitor_invalid_url() {
-            let result = RpcChainMonitor::new(
-                "not a url",
-                "http://localhost:9545",
-                Address::ZERO,
-            );
+            let result = RpcChainMonitor::new("not a url", "http://localhost:9545", Address::ZERO);
             assert!(result.is_err());
         }
 
