@@ -1,13 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/core",
-    "crates/sdk",
-    "crates/guest",
-    "crates/host",
-    "crates/orchestrator",
-    "crates/contracts",
-    "crates/cli",
+    "core",
+    "sdk",
+    "guest",
+    "host",
+    "orchestrator",
+    "onchain",
+    "cli",
     "build/risc0",
 ]
 exclude = [
@@ -27,13 +27,13 @@ repository = "https://github.com/open-zk/open-zk"
 
 [workspace.dependencies]
 # Internal crates
-open-zk = { path = "crates/sdk" }
-open-zk-core = { path = "crates/core" }
-open-zk-guest = { path = "crates/guest" }
-open-zk-host = { path = "crates/host" }
-open-zk-orchestrator = { path = "crates/orchestrator" }
-open-zk-contracts = { path = "crates/contracts" }
-open-zk-cli = { path = "crates/cli" }
+open-zk = { path = "sdk" }
+open-zk-core = { path = "core" }
+open-zk-guest = { path = "guest" }
+open-zk-host = { path = "host" }
+open-zk-orchestrator = { path = "orchestrator" }
+open-zk-contracts = { path = "onchain" }
+open-zk-cli = { path = "cli" }
 
 # Ethereum / Alloy
 alloy-primitives = { version = "1", default-features = false, features = ["serde"] }

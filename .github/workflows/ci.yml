@@ -74,7 +74,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: guests/range-ethereum/sp1/target/elf-compilation
-          key: sp1-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/sp1/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**') }}
+          key: sp1-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/sp1/**', 'guests/range-ethereum/Cargo.toml', 'guest/**') }}
 
       - name: Install SP1 toolchain
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
@@ -142,7 +142,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target/riscv-guest
-          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**', 'build/risc0/**') }}
+          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'guest/**', 'build/risc0/**') }}
 
       - name: Install RISC Zero toolchain
         if: steps.cache-risc0-elf.outputs.cache-hit != 'true'

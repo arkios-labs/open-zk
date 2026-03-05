@@ -1,0 +1,2 @@
+cargo:rerun-if-env-changed=SP1_ZKVM_MAX_MEMORY
+cargo:rerun-if-env-changed=SP1_ZKVM_INPUT_REGION_SIZE

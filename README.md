@@ -229,14 +229,14 @@ graph LR
 
 | Crate | Path | Description |
 |-------|------|-------------|
-| `open-zk` | `crates/sdk` | Unified SDK re-exporting core functionality |
-| `open-zk-core` | `crates/core` | Core traits and types (`no_std` compatible) |
-| `open-zk-guest` | `crates/guest` | Guest-side I/O abstraction for zkVM programs |
-| `open-zk-host` | `crates/host` | Host prover backends and witness generation |
-| `open-zk-orchestrator` | `crates/orchestrator` | Orchestration engine (Beacon / Sentinel loops) |
-| `open-zk-contracts` | `crates/contracts` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
-| `open-zk-cli` | `crates/cli` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
-| `open-zk-build-risc0` | `build/risc0` | RISC Zero guest ELF builder |
+| `open-zk` | `sdk/` | Unified SDK re-exporting core functionality |
+| `open-zk-core` | `core/` | Core traits and types (`no_std` compatible) |
+| `open-zk-guest` | `guest/` | Guest-side I/O abstraction for zkVM programs |
+| `open-zk-host` | `host/` | Host prover backends and witness generation |
+| `open-zk-orchestrator` | `orchestrator/` | Orchestration engine (Beacon / Sentinel loops) |
+| `open-zk-contracts` | `onchain/` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
+| `open-zk-cli` | `cli/` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
+| `open-zk-build-risc0` | `build/risc0/` | RISC Zero guest ELF builder |
 
 **Guest Programs** (compiled separately, not workspace members):
 

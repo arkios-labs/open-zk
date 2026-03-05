@@ -1,0 +1,10 @@
+/Users/darron/vscodeWorkspace/open-zk/guests/range-ethereum/sp1/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/deps/embedded_alloc-c4f0b263e4025551.d: /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/lib.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/llff.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/tlsf.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/../README.md
+
+/Users/darron/vscodeWorkspace/open-zk/guests/range-ethereum/sp1/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/deps/libembedded_alloc-c4f0b263e4025551.rlib: /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/lib.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/llff.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/tlsf.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/../README.md
+
+/Users/darron/vscodeWorkspace/open-zk/guests/range-ethereum/sp1/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/deps/libembedded_alloc-c4f0b263e4025551.rmeta: /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/lib.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/llff.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/tlsf.rs /Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/../README.md
+
+/Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/lib.rs:
+/Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/llff.rs:
+/Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/tlsf.rs:
+/Users/darron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embedded-alloc-0.6.0/src/../README.md:
