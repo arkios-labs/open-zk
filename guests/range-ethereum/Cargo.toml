@@ -8,9 +8,10 @@ edition = "2021"
 #   SP1:       cd guests/range-ethereum && cargo prove build --features sp1
 #   RISC Zero: cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 
+# This crate is SP1-only. For RISC Zero, see guests/range-ethereum-risc0/.
+
 [features]
 sp1 = ["open-zk-guest/sp1", "dep:sp1-zkvm"]
-risc0 = ["open-zk-guest/risc0", "dep:risc0-zkvm"]
 
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }
@@ -23,19 +24,8 @@ kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7"
 kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 
-# zkVM backends
+# SP1 backend
 sp1-zkvm = { version = "6", optional = true }
-risc0-zkvm = { version = "3", optional = true, default-features = false, features = ["std", "heap-embedded-alloc", "unstable"] }
 
 [profile.release]
 opt-level = 3
-lto = "fat"
-codegen-units = 1
-
-# RISC Zero patched crates for riscv32im compatibility (atomic symbols, etc.)
-# Following kailua's approach: https://github.com/boundless-xyz/kailua
-[patch.crates-io]
-crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag = "v0.5.5-risczero.0" }
-k256 = { git = "https://github.com/risc0/RustCrypto-elliptic-curves", tag = "k256/v0.13.4-risczero.1" }
-sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.9-risczero.0" }
-tiny-keccak = { git = "https://github.com/risc0/tiny-keccak", tag = "tiny-keccak/v2.0.2-risczero.0" }

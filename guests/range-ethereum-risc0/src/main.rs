@@ -1,11 +1,11 @@
-//! Ethereum DA range proof guest program (SP1 variant).
+//! Ethereum DA range proof guest program (RISC Zero variant).
 //!
 //! Proves a range of L2 blocks using Ethereum (calldata + blobs) as the
-//! data availability layer. Same logic as guests/range-ethereum-risc0/ but
-//! built for the SP1 zkVM without RISC Zero crate patches.
+//! data availability layer. Same logic as guests/range-ethereum/ but built
+//! for the RISC Zero zkVM with patched crates.
 
 #![no_main]
-#![cfg_attr(not(any(feature = "sp1", test)), no_std)]
+#![cfg_attr(not(any(feature = "risc0", test)), no_std)]
 
 extern crate alloc;
 
@@ -17,7 +17,7 @@ use open_zk_core::traits::ZkvmReader;
 use open_zk_guest::oracle::PreimageStore;
 use open_zk_guest::pipeline::{DaSourceFactory, PreimageOracle};
 
-sp1_zkvm::entrypoint!(main);
+risc0_zkvm::guest::entry!(main);
 
 struct EthereumDa;
 

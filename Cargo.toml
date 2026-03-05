@@ -12,6 +12,7 @@ members = [
 ]
 exclude = [
     "guests/range-ethereum",
+    "guests/range-ethereum-risc0",
     "guests/range-celestia",
     "guests/range-eigenda",
     "guests/aggregation",

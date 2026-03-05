@@ -79,7 +79,7 @@ jobs:
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
         run: |
           curl -L https://sp1.succinct.xyz | bash
-          ~/.sp1/bin/sp1up -v v6.0.1
+          ~/.sp1/bin/sp1up -v 6.0.2
           ~/.sp1/bin/cargo-prove prove --version
 
       - name: Build SP1 guest ELF
