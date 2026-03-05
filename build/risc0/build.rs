@@ -33,7 +33,7 @@ fn main() {
         };
 
         risc0_build::embed_methods_with_options(std::collections::HashMap::from([(
-            "guest-range-ethereum",
+            "guest-range-ethereum-risc0",
             guest_options,
         )]));
     }
