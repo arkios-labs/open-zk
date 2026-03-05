@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  contracts:
+    name: Solidity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - working-directory: contracts
+        run: forge test
+
+  # ---------------------------------------------------------------------------
+  # E2E tests — devnet + guest ELF build + SP1/RISC Zero execution
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      # -- SP1 ELF cache & build --
+      - name: Cache SP1 ELF
+        id: cache-sp1-elf
+        uses: actions/cache@v4
+        with:
+          path: guests/range-ethereum/target/elf-compilation
+          key: sp1-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/Cargo.toml', 'guests/range-ethereum/Cargo.lock', 'crates/guest/**') }}
+
+      - name: Install SP1 toolchain
+        if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
+        run: |
+          curl -L https://sp1.succinct.xyz | bash
+          ~/.sp1/bin/sp1up
+          echo "$HOME/.sp1/bin" >> $GITHUB_PATH
+
+      - name: Build SP1 guest ELF
+        if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
+        run: |
+          export PATH="$HOME/.sp1/bin:$PATH"
+          cd guests/range-ethereum && cargo prove build --features sp1
+
+      # -- RISC Zero ELF cache & build --
+      - name: Cache RISC Zero ELF
+        id: cache-risc0-elf
+        uses: actions/cache@v4
+        with:
+          path: target/riscv-guest
+          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/Cargo.toml', 'guests/range-ethereum/Cargo.lock', 'crates/guest/**', 'build/risc0/**') }}
+
+      - name: Install RISC Zero toolchain
+        if: steps.cache-risc0-elf.outputs.cache-hit != 'true'
+        run: |
+          curl -L https://risczero.com/install | bash
+          ~/.risc0/bin/rzup install
+
+      - name: Build RISC Zero guest ELF
+        if: steps.cache-risc0-elf.outputs.cache-hit != 'true'
+        run: |
+          export PATH="$HOME/.risc0/bin:$PATH"
+          cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build --release
+
+      # -- Devnet --
+      - name: Start devnet
+        run: |
+          git clone --depth 1 --branch v1.9.1 --recursive \
+            https://github.com/ethereum-optimism/optimism.git
+          make -C optimism devnet-up
+
+      - name: Wait for devnet
+        run: |
+          echo "Waiting for L1..."
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:8545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
+            sleep 2; done'
+          echo "Waiting for L2..."
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:9545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
+            sleep 2; done'
+          echo "Devnet ready"
+
+      # -- E2E tests (sequential — shared deployer nonce) --
+      - name: SP1 E2E
+        run: |
+          SP1_PROVER=mock cargo test -p open-zk-host \
+            --features "sp1,kona" --test range_ethereum_e2e \
+            --release -- --ignored --nocapture
+
+      - name: RISC Zero E2E
+        run: |
+          RISC0_DEV_MODE=1 cargo test -p open-zk-host \
+            --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
+            --release -- --ignored --nocapture
+
+      - name: Stop devnet
+        if: always()
+        run: make -C optimism devnet-down || true
