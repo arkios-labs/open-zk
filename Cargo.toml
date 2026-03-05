@@ -8,6 +8,7 @@ members = [
     "crates/orchestrator",
     "crates/contracts",
     "crates/cli",
+    "build/risczero",
 ]
 exclude = [
     "guests/range",
@@ -79,6 +80,10 @@ kona-registry = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2
 sp1-sdk = "6"
 sp1-zkvm = "6"
 risc0-zkvm = "3"
+risc0-build = "3"
+
+# Build crates
+open-zk-build-risczero = { path = "build/risczero" }
 
 # Serialization (zero-copy)
 rkyv = { version = "0.7", default-features = false }
