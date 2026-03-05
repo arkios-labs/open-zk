@@ -7,10 +7,10 @@ description = "Host-side prover backends and witness generation"
 
 [features]
 default = []
-sp1 = ["dep:sp1-sdk", "dep:bincode"]
-risc0 = ["dep:risc0-zkvm", "dep:bincode", "dep:open-zk-build-risc0"]
+sp1 = ["dep:open-zk-zkvm-sp1-host"]
+risc0 = ["dep:open-zk-zkvm-risc0-host"]
 # Rebuild RISC Zero guest ELFs from source (requires rzup toolchain)
-rebuild-risc0-guest = ["risc0", "open-zk-build-risc0/rebuild-guest", "open-zk-build-risc0/debug-guest-build"]
+rebuild-risc0-guest = ["risc0", "open-zk-zkvm-risc0-host/rebuild-guest"]
 kona = [
     "dep:kona-host",
     "dep:kona-client",
@@ -34,10 +34,8 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
-sp1-sdk = { workspace = true, optional = true }
-risc0-zkvm = { workspace = true, optional = true }
-open-zk-build-risc0 = { workspace = true, optional = true }
-bincode = { version = "1", optional = true }
+open-zk-zkvm-sp1-host = { path = "../zkvm/sp1/host", optional = true }
+open-zk-zkvm-risc0-host = { path = "../zkvm/risc0/host", optional = true }
 rkyv = { workspace = true, features = ["alloc", "validation", "size_32", "std"], optional = true }
 kona-host = { workspace = true, optional = true }
 kona-client = { workspace = true, optional = true }
@@ -59,3 +57,4 @@ alloy-rpc-types-eth = { workspace = true }
 url = { workspace = true }
 serde_json = { workspace = true }
 tracing-subscriber = { workspace = true }
+open-zk-zkvm-sp1-host = { path = "../zkvm/sp1/host" }
