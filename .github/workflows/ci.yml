@@ -49,7 +49,7 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - name: Install dependencies
         working-directory: contracts
-        run: forge install foundry-rs/forge-std succinctlabs/sp1-contracts risc0/risc0-ethereum --no-commit
+        run: forge install foundry-rs/forge-std succinctlabs/sp1-contracts risc0/risc0-ethereum --no-git
       - working-directory: contracts
         run: forge test
 
