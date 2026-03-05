@@ -8,6 +8,8 @@ members = [
     "crates/orchestrator",
     "crates/contracts",
     "crates/cli",
+    "crates/zkvm/sp1/host",
+    "crates/zkvm/risc0/host",
     "build/risc0",
 ]
 exclude = [
@@ -17,6 +19,8 @@ exclude = [
     "guests/range-celestia",
     "guests/range-eigenda",
     "guests/aggregation",
+    "crates/zkvm/sp1/guest",
+    "crates/zkvm/risc0/guest",
 ]
 
 [workspace.package]
@@ -82,6 +86,10 @@ sp1-sdk = "6"
 sp1-zkvm = "6"
 risc0-zkvm = "3"
 risc0-build = "3"
+
+# zkVM backend crates
+open-zk-zkvm-sp1-host = { path = "crates/zkvm/sp1/host" }
+open-zk-zkvm-risc0-host = { path = "crates/zkvm/risc0/host" }
 
 # Build crates
 open-zk-build-risc0 = { path = "build/risc0" }

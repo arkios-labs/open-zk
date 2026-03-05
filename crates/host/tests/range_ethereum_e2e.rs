@@ -4,7 +4,7 @@
 //!
 //! Prerequisites:
 //!   - Running OP Stack devnet (`just devnet-up`)
-//!   - SP1 ELF built: `cd guests/range-ethereum && cargo prove build --features sp1`
+//!   - SP1 ELF built: `cd guests/range-ethereum/sp1 && cargo prove build --features sp1`
 //!   - RISC Zero ELF built:
 //!     cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 //!
@@ -12,7 +12,7 @@
 //!   SP1_PROVER=mock cargo test -p open-zk-host --features "sp1,kona" \
 //!     --test range_ethereum_e2e --release -- --ignored --nocapture
 //!
-//!   RISC0_DEV_MODE=1 cargo test -p open-zk-host --features "risc0,kona" \
+//!   RISC0_DEV_MODE=1 cargo test -p open-zk-host --features "rebuild-risc0-guest,kona" \
 //!     --test range_ethereum_e2e --release -- --ignored --nocapture
 
 #![cfg(feature = "kona")]
@@ -98,17 +98,14 @@ async fn verify_journal(result: &open_zk_core::types::ProofArtifact) {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_range_ethereum_sp1_e2e_devnet() {
-    use open_zk_host::prover::{Sp1Program, Sp1ProverBackend, Sp1Witness};
-    use sp1_sdk::SP1Stdin;
+    use open_zk_host::prover::{Sp1Program, Sp1ProverBackend};
+    use open_zk_host::witness::raw_witness_to_sp1_witness;
 
     init_tracing();
     let witness = generate_witness().await;
+    let sp1_witness = raw_witness_to_sp1_witness(&witness).expect("witness conversion failed");
 
-    let mut stdin = SP1Stdin::new();
-    stdin.write(&witness.oracle_data);
-    let sp1_witness = Sp1Witness { stdin };
-
-    let elf = open_zk_host::include_range_ethereum_elf!();
+    let elf = open_zk_zkvm_sp1_host::include_range_ethereum_elf!();
     let program = Sp1Program::new("range-ethereum", elf.to_vec());
 
     println!("Executing range-ethereum ELF in SP1 mock mode...");
@@ -133,14 +130,12 @@ async fn test_range_ethereum_sp1_e2e_devnet() {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_range_ethereum_risc0_e2e_devnet() {
-    use open_zk_host::prover::{RiscZeroProgram, RiscZeroProverBackend, RiscZeroWitness};
+    use open_zk_host::prover::{RiscZeroProgram, RiscZeroProverBackend};
+    use open_zk_host::witness::raw_witness_to_risc0_witness;
 
     init_tracing();
     let witness = generate_witness().await;
-
-    let rz_witness = RiscZeroWitness {
-        oracle_data: witness.oracle_data,
-    };
+    let rz_witness = raw_witness_to_risc0_witness(&witness).expect("witness conversion failed");
 
     let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ELF;
     let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ID;
