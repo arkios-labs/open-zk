@@ -1,8 +1,8 @@
 use alloy_primitives::B256;
 use async_trait::async_trait;
-use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
+use open_zk_core::traits::{GuestProgram, ProverBackend};
 use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
-use sp1_sdk::{Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
+use sp1_sdk::{Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey};
 
 use crate::Sp1Witness;
 

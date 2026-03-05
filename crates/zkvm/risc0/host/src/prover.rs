@@ -49,6 +49,7 @@ impl GuestProgram for RiscZeroProgram {
 ///
 /// Uses `RISC0_DEV_MODE=1` for fast execution without real ZK proof generation.
 /// In dev mode, `default_prover()` produces fast dev receipts.
+#[derive(Default)]
 pub struct RiscZeroProverBackend;
 
 #[derive(Debug, thiserror::Error)]
