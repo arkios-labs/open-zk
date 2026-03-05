@@ -1,0 +1,20 @@
+[package]
+name = "open-zk-zkvm-risc0-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RISC Zero host-side prover backend for open-zk"
+
+[features]
+default = []
+# Rebuild RISC Zero guest ELFs from source (requires rzup toolchain)
+rebuild-guest = ["dep:open-zk-build-risc0", "open-zk-build-risc0/rebuild-guest", "open-zk-build-risc0/debug-guest-build"]
+
+[dependencies]
+open-zk-core = { workspace = true }
+alloy-primitives = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+risc0-zkvm = { workspace = true }
+bincode = "1"
+open-zk-build-risc0 = { workspace = true, optional = true }

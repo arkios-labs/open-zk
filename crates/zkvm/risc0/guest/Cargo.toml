@@ -1,0 +1,11 @@
+[package]
+name = "open-zk-zkvm-risc0-guest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RISC Zero guest-side I/O adapter for open-zk"
+
+[dependencies]
+open-zk-core = { workspace = true }
+serde = { workspace = true }
+risc0-zkvm = { workspace = true }
