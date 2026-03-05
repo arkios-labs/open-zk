@@ -4,5 +4,5 @@
 risc0_zkvm::guest::entry!(main);
 
 fn main() {
-    guest_range_ethereum::guest_main();
+    guest_range_ethereum::guest_main(open_zk_zkvm_risc0_guest::RiscZeroIo);
 }

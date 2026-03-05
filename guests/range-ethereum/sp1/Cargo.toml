@@ -9,11 +9,12 @@ edition = "2021"
 #   cd guests/range-ethereum/sp1 && cargo prove build --features sp1
 
 [features]
-sp1 = ["guest-range-ethereum/sp1", "dep:sp1-zkvm"]
+sp1 = ["dep:sp1-zkvm", "dep:open-zk-zkvm-sp1-guest"]
 
 [dependencies]
 guest-range-ethereum = { path = "..", default-features = false }
 sp1-zkvm = { version = "6", optional = true }
+open-zk-zkvm-sp1-guest = { path = "../../../crates/zkvm/sp1/guest", optional = true }
 
 [profile.release]
 opt-level = 3

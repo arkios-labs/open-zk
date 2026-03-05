@@ -12,10 +12,6 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
-[features]
-sp1 = ["open-zk-guest/sp1"]
-risc0 = ["open-zk-guest/risc0"]
-
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }
 open-zk-core = { path = "../../crates/core", default-features = false }
