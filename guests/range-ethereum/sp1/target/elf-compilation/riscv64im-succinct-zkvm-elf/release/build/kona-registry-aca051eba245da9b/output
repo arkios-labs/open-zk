@@ -1,3 +1,0 @@
-cargo:rerun-if-env-changed=KONA_BIND
-cargo:rerun-if-env-changed=KONA_CUSTOM_CONFIGS
-cargo:rerun-if-env-changed=KONA_CUSTOM_CONFIGS_TEST
