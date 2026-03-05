@@ -38,7 +38,7 @@ SP1_PROVER=mock cargo test -p open-zk-host \
 
 # RISC Zero E2E (dev mode, ~15s)
 RISC0_DEV_MODE=1 cargo test -p open-zk-host \
-  --features "rebuild-risc0-guest,kona" --test range_ethereum_risc0_e2e \
+  --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
   --release -- --ignored --nocapture
 
 # On-chain E2E (requires deployed contracts)

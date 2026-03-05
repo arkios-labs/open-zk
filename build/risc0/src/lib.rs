@@ -15,8 +15,8 @@
 //!
 //! # Generated constants
 //!
-//! - `GUEST_RANGE_ETHEREUM_ELF: &[u8]` — compiled guest ELF binary
-//! - `GUEST_RANGE_ETHEREUM_ID: [u32; 8]` — RISC Zero image ID
+//! - `GUEST_RANGE_ETHEREUM_RISC0_ELF: &[u8]` — compiled guest ELF binary
+//! - `GUEST_RANGE_ETHEREUM_RISC0_ID: [u32; 8]` — RISC Zero image ID
 
 // When rebuild-guest is enabled, include the auto-generated methods.rs
 #[cfg(feature = "rebuild-guest")]
@@ -27,9 +27,9 @@ include!(concat!(env!("OUT_DIR"), "/methods.rs"));
 #[cfg(not(feature = "rebuild-guest"))]
 mod prebuilt {
     /// Placeholder ELF — rebuild with `--features rebuild-guest` to generate.
-    pub const GUEST_RANGE_ETHEREUM_ELF: &[u8] = &[];
+    pub const GUEST_RANGE_ETHEREUM_RISC0_ELF: &[u8] = &[];
     /// Placeholder image ID — rebuild with `--features rebuild-guest` to generate.
-    pub const GUEST_RANGE_ETHEREUM_ID: [u32; 8] = [0u32; 8];
+    pub const GUEST_RANGE_ETHEREUM_RISC0_ID: [u32; 8] = [0u32; 8];
 }
 
 #[cfg(not(feature = "rebuild-guest"))]

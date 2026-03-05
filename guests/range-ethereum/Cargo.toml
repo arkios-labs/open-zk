@@ -3,15 +3,18 @@ name = "guest-range-ethereum"
 version = "0.1.0"
 edition = "2021"
 
+# Shared library for the Ethereum DA range proof guest.
+# zkVM-specific entrypoints live in sp1/ and risc0/ sub-crates.
+#
 # This crate is NOT a workspace member.
-# It is compiled separately for zkVM targets:
-#   SP1:       cd guests/range-ethereum && cargo prove build --features sp1
-#   RISC Zero: cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
+# It is compiled separately for zkVM targets via the sub-crates.
 
-# This crate is SP1-only. For RISC Zero, see guests/range-ethereum-risc0/.
+[lib]
+path = "src/lib.rs"
 
 [features]
-sp1 = ["open-zk-guest/sp1", "dep:sp1-zkvm"]
+sp1 = ["open-zk-guest/sp1"]
+risc0 = ["open-zk-guest/risc0"]
 
 [dependencies]
 open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }
@@ -23,9 +26,3 @@ serde = { version = "1", default-features = false, features = ["derive"] }
 kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-
-# SP1 backend
-sp1-zkvm = { version = "6", optional = true }
-
-[profile.release]
-opt-level = 3

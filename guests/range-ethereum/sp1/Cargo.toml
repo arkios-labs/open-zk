@@ -1,0 +1,19 @@
+[package]
+name = "guest-range-ethereum-sp1"
+version = "0.1.0"
+edition = "2021"
+
+# SP1 entrypoint for the Ethereum DA range proof guest.
+#
+# Build:
+#   cd guests/range-ethereum/sp1 && cargo prove build --features sp1
+
+[features]
+sp1 = ["guest-range-ethereum/sp1", "dep:sp1-zkvm"]
+
+[dependencies]
+guest-range-ethereum = { path = "..", default-features = false }
+sp1-zkvm = { version = "6", optional = true }
+
+[profile.release]
+opt-level = 3

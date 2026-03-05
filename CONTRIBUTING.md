@@ -33,7 +33,7 @@ just ci                                            # All of the above
 
 ```bash
 # SP1
-cd guests/range-ethereum && cargo prove build --features sp1
+cd guests/range-ethereum/sp1 && cargo prove build --features sp1
 
 # RISC Zero
 cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build

@@ -72,8 +72,8 @@ jobs:
         id: cache-sp1-elf
         uses: actions/cache@v4
         with:
-          path: guests/range-ethereum/target/elf-compilation
-          key: sp1-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/Cargo.toml', 'guests/range-ethereum/Cargo.lock', 'crates/guest/**') }}
+          path: guests/range-ethereum/sp1/target/elf-compilation
+          key: sp1-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/sp1/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**') }}
 
       - name: Install SP1 toolchain
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
@@ -85,7 +85,7 @@ jobs:
       - name: Build SP1 guest ELF
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
         run: |
-          cd guests/range-ethereum && ~/.sp1/bin/cargo-prove prove build --features sp1
+          cd guests/range-ethereum/sp1 && ~/.sp1/bin/cargo-prove prove build --features sp1
 
       - name: Start devnet
         run: |
@@ -131,7 +131,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target/riscv-guest
-          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/Cargo.toml', 'guests/range-ethereum/Cargo.lock', 'crates/guest/**', 'build/risc0/**') }}
+          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**', 'build/risc0/**') }}
 
       - name: Install RISC Zero toolchain
         if: steps.cache-risc0-elf.outputs.cache-hit != 'true'

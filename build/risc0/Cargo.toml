@@ -18,4 +18,4 @@ risc0-build = { version = "3", optional = true }
 # Guest crate paths (relative to this Cargo.toml).
 # risc0-build reads this to discover guest programs.
 [package.metadata.risc0]
-methods = ["../../guests/range-ethereum-risc0"]
+methods = ["../../guests/range-ethereum/risc0"]

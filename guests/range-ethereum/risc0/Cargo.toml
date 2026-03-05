@@ -1,29 +1,18 @@
 [package]
-name = "guest-range-ethereum"
+name = "guest-range-ethereum-risc0"
 version = "0.1.0"
 edition = "2021"
 
-# RISC Zero variant of the range-ethereum guest.
-# Source code is shared with guests/range-ethereum/ via include!().
+# RISC Zero entrypoint for the Ethereum DA range proof guest.
 #
 # Build:
 #   cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
 
 [features]
-risc0 = ["open-zk-guest/risc0", "dep:risc0-zkvm"]
+risc0 = ["guest-range-ethereum/risc0", "dep:risc0-zkvm"]
 
 [dependencies]
-open-zk-guest = { path = "../../crates/guest", default-features = false, features = ["pipeline"] }
-open-zk-core = { path = "../../crates/core", default-features = false }
-alloy-primitives = { version = "1", default-features = false }
-serde = { version = "1", default-features = false, features = ["derive"] }
-
-# Kona
-kona-proof = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-kona-derive = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-kona-genesis = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
-
-# RISC Zero backend
+guest-range-ethereum = { path = "..", default-features = false }
 risc0-zkvm = { version = "3", optional = true, default-features = false, features = ["std", "heap-embedded-alloc", "unstable"] }
 
 [profile.release]

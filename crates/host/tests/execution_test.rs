@@ -22,8 +22,8 @@ async fn test_risc0_execute_range_guest() {
     use open_zk_core::types::ProvingMode;
     use open_zk_host::prover::{RiscZeroProgram, RiscZeroProverBackend, RiscZeroWitness};
 
-    let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ELF;
-    let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ID;
+    let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ELF;
+    let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ID;
     let program = RiscZeroProgram::new("range-ethereum", image_id, elf.to_vec());
 
     // Empty oracle data — guest will fail at BootInfo::load, but this verifies

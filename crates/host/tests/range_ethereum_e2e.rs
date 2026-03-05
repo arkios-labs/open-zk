@@ -142,8 +142,8 @@ async fn test_range_ethereum_risc0_e2e_devnet() {
         oracle_data: witness.oracle_data,
     };
 
-    let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ELF;
-    let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_ID;
+    let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ELF;
+    let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ID;
     let program = RiscZeroProgram::new("range-ethereum", image_id, elf.to_vec());
 
     println!("Executing range-ethereum ELF in RISC Zero dev mode...");
