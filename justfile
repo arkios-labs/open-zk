@@ -104,11 +104,11 @@ ci: fmt-check lint test
 
 # Build the range proof guest ELF
 guest-build-range:
-    cd guests/range && cargo prove build --features sp1
+    cd l2-finality/guests/range-ethereum/sp1 && cargo prove build --features sp1
 
 # Build the aggregation guest ELF
 guest-build-aggregation:
-    cd guests/aggregation && cargo prove build --features sp1
+    cd l2-finality/guests/aggregation && cargo prove build --features sp1
 
 # Build all guest ELFs
 guest-build: guest-build-range guest-build-aggregation

@@ -1,5 +1,5 @@
 /target
-guests/**/target
+**/guests/**/target
 Cargo.lock
 *.swp
 *.swo
@@ -11,7 +11,7 @@ devnet.log
 .localtestdata/
 
 # Guest ELF outputs
-guests/*/elf/
+**/guests/*/elf/
 
 # Foundry (Solidity contracts)
 contracts/out/

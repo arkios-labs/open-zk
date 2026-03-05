@@ -14,7 +14,7 @@ risc0 = ["open-zk-guest/risc0", "dep:risc0-zkvm"]
 
 [dependencies]
 open-zk-guest = { path = "../../guest", default-features = false, features = ["pipeline"] }
-open-zk-core = { path = "../../core", default-features = false }
+open-zk-core = { path = "../../../core", default-features = false }
 alloy-primitives = { version = "1", default-features = false }
 alloy-consensus = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }

@@ -122,15 +122,18 @@ ci: split E2E into parallel SP1 and RISC Zero jobs
 Directory names are short; only `package.name` in Cargo.toml carries the `open-zk-` prefix:
 
 ```
-core/              → open-zk-core         # Traits + types (no_std)
-sdk/               → open-zk              # Public SDK (config, re-exports)
-guest/             → open-zk-guest        # Guest-side zkVM I/O + pipeline
-host/              → open-zk-host         # Witness generation (backend-agnostic)
-orchestrator/      → open-zk-orchestrator # Intent resolver + engine
-onchain/           → open-zk-contracts    # On-chain ABI bindings
-cli/               → open-zk-cli          # CLI binary
-zkvm/sp1/host/     → open-zk-sp1         # SP1 prover + witness adapter
-zkvm/risc0/host/   → open-zk-risc0       # RISC Zero prover + ELF builder
+core/                         → open-zk-core         # Traits + types (no_std)
+sdk/                          → open-zk              # Public SDK (config, re-exports)
+cli/                          → open-zk-cli          # CLI binary
+
+l2-finality/guest/            → open-zk-guest        # Guest-side I/O + pipeline
+l2-finality/host/             → open-zk-host         # Witness generation
+l2-finality/orchestrator/     → open-zk-orchestrator # Intent resolver + engine
+l2-finality/onchain/          → open-zk-contracts    # On-chain ABI bindings
+l2-finality/guests/           # Guest programs (workspace-excluded)
+
+zkvm/sp1/host/                → open-zk-sp1          # SP1 prover + witness adapter
+zkvm/risc0/host/              → open-zk-risc0        # RISC Zero prover + ELF builder
 ```
 
 ### Crate Dependency Direction

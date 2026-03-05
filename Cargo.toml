@@ -3,21 +3,21 @@ resolver = "2"
 members = [
     "core",
     "sdk",
-    "guest",
-    "host",
-    "orchestrator",
-    "onchain",
+    "l2-finality/guest",
+    "l2-finality/host",
+    "l2-finality/orchestrator",
+    "l2-finality/onchain",
     "cli",
     "zkvm/sp1/host",
     "zkvm/risc0/host",
 ]
 exclude = [
-    "guests/range-ethereum",
-    "guests/range-ethereum/sp1",
-    "guests/range-ethereum/risc0",
-    "guests/range-celestia",
-    "guests/range-eigenda",
-    "guests/aggregation",
+    "l2-finality/guests/range-ethereum",
+    "l2-finality/guests/range-ethereum/sp1",
+    "l2-finality/guests/range-ethereum/risc0",
+    "l2-finality/guests/range-celestia",
+    "l2-finality/guests/range-eigenda",
+    "l2-finality/guests/aggregation",
 ]
 
 [workspace.package]
@@ -30,10 +30,10 @@ repository = "https://github.com/open-zk/open-zk"
 # Internal crates
 open-zk = { path = "sdk" }
 open-zk-core = { path = "core" }
-open-zk-guest = { path = "guest" }
-open-zk-host = { path = "host" }
-open-zk-orchestrator = { path = "orchestrator" }
-open-zk-contracts = { path = "onchain" }
+open-zk-guest = { path = "l2-finality/guest" }
+open-zk-host = { path = "l2-finality/host" }
+open-zk-orchestrator = { path = "l2-finality/orchestrator" }
+open-zk-contracts = { path = "l2-finality/onchain" }
 open-zk-cli = { path = "cli" }
 
 # Ethereum / Alloy

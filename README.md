@@ -229,13 +229,25 @@ graph LR
 
 | Crate | Path | Description |
 |-------|------|-------------|
-| `open-zk` | `sdk/` | Unified SDK re-exporting core functionality |
+| Crate | Path | Description |
+|-------|------|-------------|
 | `open-zk-core` | `core/` | Core traits and types (`no_std` compatible) |
-| `open-zk-guest` | `guest/` | Guest-side I/O abstraction for zkVM programs |
-| `open-zk-host` | `host/` | Host prover backends and witness generation |
-| `open-zk-orchestrator` | `orchestrator/` | Orchestration engine (Beacon / Sentinel loops) |
-| `open-zk-contracts` | `onchain/` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
+| `open-zk` | `sdk/` | Unified SDK (config, re-exports) |
 | `open-zk-cli` | `cli/` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
+
+**L2 Finality** (`l2-finality/`):
+
+| Crate | Path | Description |
+|-------|------|-------------|
+| `open-zk-guest` | `l2-finality/guest/` | Guest-side I/O abstraction and pipeline |
+| `open-zk-host` | `l2-finality/host/` | Witness generation (backend-agnostic) |
+| `open-zk-orchestrator` | `l2-finality/orchestrator/` | Orchestration engine (Beacon / Sentinel) |
+| `open-zk-contracts` | `l2-finality/onchain/` | On-chain ABI bindings and proof submission |
+
+**zkVM Backends** (`zkvm/`):
+
+| Crate | Path | Description |
+|-------|------|-------------|
 | `open-zk-sp1` | `zkvm/sp1/host/` | SP1 prover backend, ELF loading, witness adapter |
 | `open-zk-risc0` | `zkvm/risc0/host/` | RISC Zero prover backend, ELF builder, witness adapter |
 
@@ -243,10 +255,10 @@ graph LR
 
 | Program | Path | Description |
 |---------|------|-------------|
-| `guest-range-ethereum` | `guests/range-ethereum` | Range proof with Ethereum DA |
-| `guest-range-celestia` | `guests/range-celestia` | Range proof with Celestia DA |
-| `guest-range-eigenda` | `guests/range-eigenda` | Range proof with EigenDA |
-| `guest-aggregation` | `guests/aggregation` | Aggregates multiple range proofs |
+| `guest-range-ethereum` | `l2-finality/guests/range-ethereum/` | Range proof with Ethereum DA |
+| `guest-range-celestia` | `l2-finality/guests/range-celestia/` | Range proof with Celestia DA |
+| `guest-range-eigenda` | `l2-finality/guests/range-eigenda/` | Range proof with EigenDA |
+| `guest-aggregation` | `l2-finality/guests/aggregation/` | Aggregates multiple range proofs |
 
 ## Getting Started
 

@@ -4,7 +4,7 @@
 //!
 //! Prerequisites:
 //!   - Running OP Stack devnet (`just devnet-up`)
-//!   - SP1 ELF built: `cd guests/range-ethereum && cargo prove build --features sp1`
+//!   - SP1 ELF built: `cd l2-finality/guests/range-ethereum/sp1 && cargo prove build --features sp1`
 //!   - RISC Zero ELF built:
 //!     cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
 //!
