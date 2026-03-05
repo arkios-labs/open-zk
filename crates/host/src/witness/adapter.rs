@@ -7,23 +7,16 @@
 //! via a single `io.read::<Vec<u8>>()` call.
 
 use open_zk_core::traits::RawWitness;
-#[cfg(feature = "sp1")]
-use open_zk_core::types::BootInfo;
 
-/// Convert a RawWitness into an SP1 witness with properly typed stdin writes.
+/// Convert a RawWitness into an SP1 witness.
 ///
-/// Decodes `BootInfo` from ABI format, then writes it and the oracle data
-/// to `SP1Stdin` using typed `write()` (bincode serde), matching the guest's
-/// `io.read::<BootInfo>()` and `io.read::<Vec<u8>>()` calls.
+/// The oracle_data already contains all preimages (including boot info as
+/// local preimage keys), so we write it as a single `Vec<u8>`.
 #[cfg(feature = "sp1")]
 pub fn raw_witness_to_sp1_witness(
     witness: &RawWitness,
 ) -> Result<crate::prover::Sp1Witness, String> {
-    let boot_info = BootInfo::from_abi_bytes(&witness.boot_info)
-        .map_err(|e| format!("failed to decode BootInfo from ABI: {e}"))?;
-
     let mut stdin = sp1_sdk::SP1Stdin::new();
-    stdin.write(&boot_info);
     stdin.write(&witness.oracle_data);
 
     Ok(crate::prover::Sp1Witness { stdin })
@@ -93,29 +86,12 @@ pub fn bytes_to_raw_witness(data: &[u8]) -> Option<RawWitness> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::B256;
-    use open_zk_core::types::BootInfo;
 
     fn sample_witness() -> RawWitness {
         RawWitness {
-            boot_info: b"boot-data-123".to_vec(),
+            boot_info: vec![],
             oracle_data: b"oracle-preimages".to_vec(),
             blob_data: b"blob-sidecar".to_vec(),
-        }
-    }
-
-    fn sample_abi_witness() -> RawWitness {
-        let boot_info = BootInfo {
-            l1_head: B256::repeat_byte(0x11),
-            l2_pre_root: B256::repeat_byte(0x22),
-            l2_claim: B256::repeat_byte(0x33),
-            l2_block_number: 100,
-            rollup_config_hash: B256::repeat_byte(0x44),
-        };
-        RawWitness {
-            boot_info: boot_info.to_abi_bytes(),
-            oracle_data: b"oracle-preimages".to_vec(),
-            blob_data: vec![],
         }
     }
 
@@ -149,28 +125,18 @@ mod tests {
         assert!(bytes_to_raw_witness(&[5, 0, 0, 0]).is_none());
     }
 
-    #[test]
-    fn abi_boot_info_decode() {
-        let witness = sample_abi_witness();
-        let boot_info = BootInfo::from_abi_bytes(&witness.boot_info).unwrap();
-        assert_eq!(boot_info.l1_head, B256::repeat_byte(0x11));
-        assert_eq!(boot_info.l2_block_number, 100);
-    }
-
     #[cfg(feature = "sp1")]
     #[test]
     fn sp1_witness_from_raw() {
-        let witness = sample_abi_witness();
+        let witness = sample_witness();
         let sp1_witness = raw_witness_to_sp1_witness(&witness).unwrap();
-        // Verify the SP1Stdin was created (we can't easily inspect its contents,
-        // but if from_abi_bytes succeeded and write didn't panic, the format is correct)
         let _ = sp1_witness;
     }
 
     #[cfg(feature = "risczero")]
     #[test]
     fn risczero_witness_from_raw() {
-        let witness = sample_abi_witness();
+        let witness = sample_witness();
         let rz_witness = raw_witness_to_risczero_witness(&witness).unwrap();
         assert_eq!(rz_witness.oracle_data, b"oracle-preimages");
     }

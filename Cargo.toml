@@ -11,7 +11,6 @@ members = [
     "build/risczero",
 ]
 exclude = [
-    "guests/range",
     "guests/range-ethereum",
     "guests/range-celestia",
     "guests/range-eigenda",

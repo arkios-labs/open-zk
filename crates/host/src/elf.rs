@@ -5,19 +5,15 @@
 //!
 //! # Build Instructions
 //!
-//! ## SP1 (recommended)
+//! ## SP1
 //!
 //! ```bash
 //! # Install SP1 toolchain
 //! curl -L https://sp1.succinct.xyz | bash
 //! sp1up
 //!
-//! # Build range proof guest
-//! cd guests/range
-//! cargo prove build --features sp1
-//!
-//! # Build aggregation guest
-//! cd guests/aggregation
+//! # Build range proof guest (Ethereum DA)
+//! cd guests/range-ethereum
 //! cargo prove build --features sp1
 //! ```
 //!
@@ -28,31 +24,12 @@
 //! curl -L https://risczero.com/install | bash
 //! rzup install
 //!
-//! # Build range proof guest
-//! cd guests/range
-//! cargo risczero build --features risczero
-//!
-//! # Build aggregation guest
-//! cd guests/aggregation
-//! cargo risczero build --features risczero
-//! ```
-//!
-//! # Automated Build
-//!
-//! When building with SP1, you can use `sp1-build` in the host crate's `build.rs`
-//! to compile guests automatically:
-//!
-//! ```rust,ignore
-//! // build.rs
-//! use sp1_build::build_program;
-//! fn main() {
-//!     build_program("../../guests/range");
-//!     build_program("../../guests/aggregation");
-//! }
+//! # Build via risc0-build (recommended)
+//! cargo build -p open-zk-build-risczero --features rebuild-guest,debug-guest-build
 //! ```
 
 // ---------------------------------------------------------------------------
-// DA-specific range proof guest ELF paths
+// DA-specific range proof guest ELF paths (SP1)
 // ---------------------------------------------------------------------------
 
 /// Path to the Ethereum DA range proof guest ELF (SP1 v6).
@@ -67,16 +44,12 @@ pub const RANGE_CELESTIA_ELF_PATH: &str =
 pub const RANGE_EIGENDA_ELF_PATH: &str =
     "guests/range-eigenda/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-eigenda";
 
-/// Path to the generic range proof guest ELF (SP1 v6, legacy skeleton).
-pub const RANGE_ELF_PATH: &str =
-    "guests/range/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range";
-
 /// Path to the aggregation guest ELF (SP1 v6).
 pub const AGGREGATION_ELF_PATH: &str =
     "guests/aggregation/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-aggregation";
 
 // ---------------------------------------------------------------------------
-// Compile-time ELF include macros
+// Compile-time ELF include macros (SP1)
 // ---------------------------------------------------------------------------
 
 /// Include the Ethereum DA range proof ELF at compile time.
@@ -108,17 +81,6 @@ macro_rules! include_range_eigenda_elf {
         include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../guests/range-eigenda/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range-eigenda"
-        ))
-    };
-}
-
-/// Include the generic range proof ELF at compile time (legacy skeleton).
-#[macro_export]
-macro_rules! include_range_elf {
-    () => {
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../guests/range/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-range"
         ))
     };
 }

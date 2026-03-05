@@ -94,6 +94,3 @@ impl HintWriterClient for PreimageStore {
         Ok(())
     }
 }
-
-/// Type alias for backward compatibility.
-pub type InMemoryOracle = PreimageStore;
