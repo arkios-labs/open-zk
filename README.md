@@ -170,15 +170,15 @@ graph TD
 
   subgraph Host["Host (Native)"]
     CLI["CLI / Orchestrator"]
-    WG["Witness Generator\n(kona-host pipeline)"]
+    WG["Witness Generator<br>(kona-host pipeline)"]
     SP1B["SP1 Backend"]
     R0B["RISC Zero Backend"]
   end
 
   subgraph Guest["Guest (zkVM)"]
-    GE["Guest Program\nrange-ethereum / celestia / eigenda"]
-    PS["PreimageStore\n(rkyv deserialization)"]
-    KP["Kona Pipeline\n(derivation + execution)"]
+    GE["Guest Program<br>range-ethereum / celestia / eigenda"]
+    PS["PreimageStore<br>(rkyv deserialization)"]
+    KP["Kona Pipeline<br>(derivation + execution)"]
   end
 
   CLI --> WG
