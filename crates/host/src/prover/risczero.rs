@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
-use open_zk_core::types::{BootInfo, CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
+use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, Receipt};
 
 /// Convert a RISC Zero image ID ([u32; 8]) to a 32-byte array (little-endian words).
@@ -13,31 +13,25 @@ fn image_id_to_bytes(image_id: &[u32; 8]) -> [u8; 32] {
     bytes
 }
 
-/// Witness carrying structured data for RISC Zero guest execution.
+/// Witness carrying serialized oracle data for RISC Zero guest execution.
 ///
-/// Contains typed fields that are serialized using risc0-serde when
-/// building the `ExecutorEnv`. This ensures wire format compatibility
-/// with the guest's `env::read::<T>()` calls.
+/// The oracle_data contains rkyv-serialized preimages (including boot info
+/// as local preimage keys). The guest reads a single `Vec<u8>` from stdin.
 pub struct RiscZeroWitness {
-    /// Boot information (L1/L2 anchors, claim, rollup config hash).
-    pub boot_info: BootInfo,
-    /// Serialized oracle preimage data for the guest derivation pipeline.
-    pub witness_data: Vec<u8>,
+    /// Serialized oracle preimage data (rkyv BTreeMap) for the guest pipeline.
+    pub oracle_data: Vec<u8>,
 }
 
 impl WitnessInput for RiscZeroWitness {}
 
 impl RiscZeroWitness {
-    /// Build a RISC Zero `ExecutorEnv` from the structured witness data.
+    /// Build a RISC Zero `ExecutorEnv` from the oracle data.
     ///
-    /// Uses typed `write()` calls that serialize via risc0-serde, matching
-    /// the guest's `env::read::<BootInfo>()` and `env::read::<Vec<u8>>()`.
+    /// Writes a single `Vec<u8>` matching the guest's `io.read::<Vec<u8>>()`.
     fn build_env(&self) -> Result<ExecutorEnv<'static>, RiscZeroProverError> {
         ExecutorEnv::builder()
-            .write(&self.boot_info)
-            .map_err(|e| RiscZeroProverError::ProvingFailed(format!("write boot_info: {e}")))?
-            .write(&self.witness_data)
-            .map_err(|e| RiscZeroProverError::ProvingFailed(format!("write witness_data: {e}")))?
+            .write(&self.oracle_data)
+            .map_err(|e| RiscZeroProverError::ProvingFailed(format!("write oracle_data: {e}")))?
             .build()
             .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))
     }

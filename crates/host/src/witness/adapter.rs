@@ -3,15 +3,11 @@
 //! When a zkVM backend needs witness data in a particular format (e.g., SP1's
 //! `SP1Stdin` or RISC Zero's `ExecutorEnv`), these adapters handle the conversion.
 //!
-//! The guest program reads data using serde-typed `io.read::<T>()` calls:
-//!   1. `io.read::<BootInfo>()`   — serde deserialization
-//!   2. `io.read::<Vec<u8>>()`    — serde deserialization of witness bytes
-//!
-//! The adapter converts RawWitness (ABI-encoded boot_info + raw oracle_data)
-//! into backend-specific witness types that use typed serde writes to match.
+//! The guest reads oracle_data (rkyv-serialized preimages including boot info)
+//! via a single `io.read::<Vec<u8>>()` call.
 
 use open_zk_core::traits::RawWitness;
-#[cfg(any(feature = "sp1", feature = "risczero"))]
+#[cfg(feature = "sp1")]
 use open_zk_core::types::BootInfo;
 
 /// Convert a RawWitness into an SP1 witness with properly typed stdin writes.
@@ -33,21 +29,16 @@ pub fn raw_witness_to_sp1_witness(
     Ok(crate::prover::Sp1Witness { stdin })
 }
 
-/// Convert a RawWitness into a RISC Zero witness with structured data.
+/// Convert a RawWitness into a RISC Zero witness.
 ///
-/// Decodes `BootInfo` from ABI format. The `RiscZeroWitness` holds structured
-/// fields that are serialized via risc0-serde when building the `ExecutorEnv`,
-/// matching the guest's `env::read::<BootInfo>()` and `env::read::<Vec<u8>>()`.
+/// The oracle_data already contains all preimages (including boot info as
+/// local preimage keys), so we just pass it through as-is.
 #[cfg(feature = "risczero")]
 pub fn raw_witness_to_risczero_witness(
     witness: &RawWitness,
 ) -> Result<crate::prover::RiscZeroWitness, String> {
-    let boot_info = BootInfo::from_abi_bytes(&witness.boot_info)
-        .map_err(|e| format!("failed to decode BootInfo from ABI: {e}"))?;
-
     Ok(crate::prover::RiscZeroWitness {
-        boot_info,
-        witness_data: witness.oracle_data.clone(),
+        oracle_data: witness.oracle_data.clone(),
     })
 }
 
@@ -181,8 +172,6 @@ mod tests {
     fn risczero_witness_from_raw() {
         let witness = sample_abi_witness();
         let rz_witness = raw_witness_to_risczero_witness(&witness).unwrap();
-        assert_eq!(rz_witness.boot_info.l1_head, B256::repeat_byte(0x11));
-        assert_eq!(rz_witness.boot_info.l2_block_number, 100);
-        assert_eq!(rz_witness.witness_data, b"oracle-preimages");
+        assert_eq!(rz_witness.oracle_data, b"oracle-preimages");
     }
 }
