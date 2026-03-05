@@ -5,11 +5,7 @@
 //! Prerequisites:
 //!   - Running OP Stack devnet (`just devnet-up`)
 //!   - RISC Zero ELF built:
-//!     cd guests/range-ethereum && \
-//!     CC_riscv32im_risc0_zkvm_elf="$HOME/.risc0/cpp/bin/riscv32-unknown-elf-gcc" \
-//!     CFLAGS_riscv32im_risc0_zkvm_elf="-march=rv32im -nostdlib" \
-//!     RISC0_FEATURE_bigint2=1 \
-//!     cargo +risc0 build --release --target riscv32im-risc0-zkvm-elf --features risczero --ignore-rust-version
+//!     cargo build -p open-zk-build-risczero --features rebuild-guest,debug-guest-build
 //!
 //! Run:
 //!   RISC0_DEV_MODE=1 cargo test -p open-zk-host --features "risczero,kona" \
