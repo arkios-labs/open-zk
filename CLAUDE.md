@@ -60,6 +60,17 @@ ORACLE_ADDRESS=0x76ca03a67C049477FfB09694dFeF00416dB69746 \
   - Types: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`, `ci`, `style`
   - Scope: crate name (`host`, `guest`, `core`, `contracts`, `cli`, `orchestrator`)
 
+## Development Patterns
+
+- **All documentation must be written in English** — code comments, commit messages, PR descriptions, README, CONTRIBUTING, CLAUDE.md.
+- **Follow Clean Code principles for refactoring:**
+  - Extract until you drop: each function/module does one thing
+  - Name things clearly — avoid abbreviations unless domain-standard (e.g., ELF, zkVM)
+  - No dead code: remove unused functions, imports, and feature flags immediately
+  - Dependency isolation: each crate should depend only on what it directly uses
+  - Prefer small, focused crates over large crates with many feature flags
+  - Keep abstractions at consistent levels within a function/module
+
 ## Workflow Rules
 
 - **Always run tests** (`cargo test --workspace`) after completing a task before considering it done.
