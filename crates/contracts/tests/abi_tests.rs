@@ -1,6 +1,5 @@
 //! ABI encoding tests for contract interfaces.
 
-use alloy_primitives::B256;
 use alloy_sol_types::{SolCall, SolInterface};
 use open_zk_contracts::abi::IOpenZkL2OutputOracle;
 
