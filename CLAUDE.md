@@ -63,7 +63,9 @@ ORACLE_ADDRESS=0x76ca03a67C049477FfB09694dFeF00416dB69746 \
 ## Development Patterns
 
 - **All documentation must be written in English** — code comments, commit messages, PR descriptions, README, CONTRIBUTING, CLAUDE.md.
-- **Follow Clean Code principles for refactoring:**
+- **Follow Clean Code principles:**
+  - **Structure first, then feature:** if adding a feature would make the code messy, refactor the structure first in a separate PR, then add the feature cleanly
+  - **Small, passing commits:** each refactoring commit must pass all tests — never leave the codebase in a broken state between commits
   - Extract until you drop: each function/module does one thing
   - Name things clearly — avoid abbreviations unless domain-standard (e.g., ELF, zkVM)
   - No dead code: remove unused functions, imports, and feature flags immediately
