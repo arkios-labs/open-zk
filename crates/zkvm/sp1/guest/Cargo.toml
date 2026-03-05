@@ -1,12 +1,14 @@
 [package]
 name = "open-zk-zkvm-sp1-guest"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2021"
 description = "SP1 guest-side I/O adapter for open-zk"
 
+# This crate is NOT a workspace member.
+# It is compiled for zkVM targets via guest entrypoint crates.
+
 [dependencies]
-open-zk-core = { workspace = true }
-serde = { workspace = true }
-sp1-zkvm = { workspace = true, features = ["verify"] }
+open-zk-core = { path = "../../../core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
+sp1-zkvm = { version = "6", features = ["verify"] }
 sha2 = { version = "0.10", default-features = false }

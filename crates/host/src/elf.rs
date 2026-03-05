@@ -1,4 +1,4 @@
-//! Guest ELF binary constants.
+//! Guest ELF binary loading utilities.
 //!
 //! # Build Instructions
 //!
@@ -16,7 +16,7 @@
 //! ```
 
 #[cfg(feature = "sp1")]
-pub use open_zk_zkvm_sp1_host::include_range_ethereum_elf;
+pub use open_zk_zkvm_sp1_host::load_range_ethereum_elf;
 
 #[cfg(feature = "risc0")]
 pub mod risc0 {

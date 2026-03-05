@@ -105,8 +105,8 @@ async fn test_range_ethereum_sp1_e2e_devnet() {
     let witness = generate_witness().await;
     let sp1_witness = raw_witness_to_sp1_witness(&witness).expect("witness conversion failed");
 
-    let elf = open_zk_zkvm_sp1_host::include_range_ethereum_elf!();
-    let program = Sp1Program::new("range-ethereum", elf.to_vec());
+    let elf = open_zk_zkvm_sp1_host::load_range_ethereum_elf();
+    let program = Sp1Program::new("range-ethereum", elf);
 
     println!("Executing range-ethereum ELF in SP1 mock mode...");
     let start = Instant::now();

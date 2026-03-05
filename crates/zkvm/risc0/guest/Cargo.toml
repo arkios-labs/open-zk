@@ -1,11 +1,13 @@
 [package]
 name = "open-zk-zkvm-risc0-guest"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2021"
 description = "RISC Zero guest-side I/O adapter for open-zk"
 
+# This crate is NOT a workspace member.
+# It is compiled for zkVM targets via guest entrypoint crates.
+
 [dependencies]
-open-zk-core = { workspace = true }
-serde = { workspace = true }
-risc0-zkvm = { workspace = true }
+open-zk-core = { path = "../../../core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
+risc0-zkvm = { version = "3" }
