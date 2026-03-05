@@ -54,24 +54,20 @@ jobs:
         run: forge test
 
   # ---------------------------------------------------------------------------
-  # E2E tests — devnet + guest ELF build + SP1/RISC Zero execution
+  # E2E tests — each zkVM backend runs in parallel on its own runner/devnet
   # ---------------------------------------------------------------------------
-  e2e:
-    name: E2E
+  e2e-sp1:
+    name: E2E (SP1)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
-      # -- SP1 ELF cache & build --
       - name: Cache SP1 ELF
         id: cache-sp1-elf
         uses: actions/cache@v4
@@ -92,7 +88,45 @@ jobs:
           export PATH="$HOME/.sp1/bin:$PATH"
           cd guests/range-ethereum && cargo prove build --features sp1
 
-      # -- RISC Zero ELF cache & build --
+      - name: Start devnet
+        run: |
+          git clone --depth 1 --branch v1.9.1 --recursive \
+            https://github.com/ethereum-optimism/optimism.git
+          make -C optimism devnet-up
+
+      - name: Wait for devnet
+        run: |
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:8545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
+            sleep 2; done'
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:9545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
+            sleep 2; done'
+
+      - name: Run SP1 E2E
+        run: |
+          SP1_PROVER=mock cargo test -p open-zk-host \
+            --features "sp1,kona" --test range_ethereum_e2e \
+            --release -- --ignored --nocapture
+
+      - name: Stop devnet
+        if: always()
+        run: make -C optimism devnet-down || true
+
+  e2e-risc0:
+    name: E2E (RISC Zero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
       - name: Cache RISC Zero ELF
         id: cache-risc0-elf
         uses: actions/cache@v4
@@ -112,7 +146,6 @@ jobs:
           export PATH="$HOME/.risc0/bin:$PATH"
           cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build --release
 
-      # -- Devnet --
       - name: Start devnet
         run: |
           git clone --depth 1 --branch v1.9.1 --recursive \
@@ -121,26 +154,16 @@ jobs:
 
       - name: Wait for devnet
         run: |
-          echo "Waiting for L1..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:8545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
-          echo "Waiting for L2..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:9545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
-          echo "Devnet ready"
 
-      # -- E2E tests (sequential — shared deployer nonce) --
-      - name: SP1 E2E
-        run: |
-          SP1_PROVER=mock cargo test -p open-zk-host \
-            --features "sp1,kona" --test range_ethereum_e2e \
-            --release -- --ignored --nocapture
-
-      - name: RISC Zero E2E
+      - name: Run RISC Zero E2E
         run: |
           RISC0_DEV_MODE=1 cargo test -p open-zk-host \
             --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
