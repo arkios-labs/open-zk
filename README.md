@@ -236,7 +236,8 @@ graph LR
 | `open-zk-orchestrator` | `orchestrator/` | Orchestration engine (Beacon / Sentinel loops) |
 | `open-zk-contracts` | `onchain/` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
 | `open-zk-cli` | `cli/` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
-| `open-zk-build-risc0` | `build/risc0/` | RISC Zero guest ELF builder |
+| `open-zk-sp1` | `zkvm/sp1/host/` | SP1 prover backend, ELF loading, witness adapter |
+| `open-zk-risc0` | `zkvm/risc0/host/` | RISC Zero prover backend, ELF builder, witness adapter |
 
 **Guest Programs** (compiled separately, not workspace members):
 
@@ -283,7 +284,7 @@ just ci
 just guest-build
 
 # RISC Zero guest (via risc0-build)
-cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
+cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
 ```
 
 ## Proving Flow

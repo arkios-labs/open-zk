@@ -1,39 +1,9 @@
-//! Witness adapter utilities for converting RawWitness to backend-specific formats.
+//! Witness adapter utilities for encoding/decoding RawWitness.
 //!
-//! When a zkVM backend needs witness data in a particular format (e.g., SP1's
-//! `SP1Stdin` or RISC Zero's `ExecutorEnv`), these adapters handle the conversion.
-//!
-//! The guest reads oracle_data (rkyv-serialized preimages including boot info)
-//! via a single `io.read::<Vec<u8>>()` call.
+//! Backend-specific conversions (RawWitness → Sp1Witness, RiscZeroWitness)
+//! live in their respective zkvm crates.
 
 use open_zk_core::traits::RawWitness;
-
-/// Convert a RawWitness into an SP1 witness.
-///
-/// The oracle_data already contains all preimages (including boot info as
-/// local preimage keys), so we write it as a single `Vec<u8>`.
-#[cfg(feature = "sp1")]
-pub fn raw_witness_to_sp1_witness(
-    witness: &RawWitness,
-) -> Result<crate::prover::Sp1Witness, String> {
-    let mut stdin = sp1_sdk::SP1Stdin::new();
-    stdin.write(&witness.oracle_data);
-
-    Ok(crate::prover::Sp1Witness { stdin })
-}
-
-/// Convert a RawWitness into a RISC Zero witness.
-///
-/// The oracle_data already contains all preimages (including boot info as
-/// local preimage keys), so we just pass it through as-is.
-#[cfg(feature = "risc0")]
-pub fn raw_witness_to_risc0_witness(
-    witness: &RawWitness,
-) -> Result<crate::prover::RiscZeroWitness, String> {
-    Ok(crate::prover::RiscZeroWitness {
-        oracle_data: witness.oracle_data.clone(),
-    })
-}
 
 /// Encode a RawWitness into a length-prefixed byte buffer for transport/storage.
 ///
@@ -123,21 +93,5 @@ mod tests {
     fn truncated_data_returns_none() {
         assert!(bytes_to_raw_witness(&[]).is_none());
         assert!(bytes_to_raw_witness(&[5, 0, 0, 0]).is_none());
-    }
-
-    #[cfg(feature = "sp1")]
-    #[test]
-    fn sp1_witness_from_raw() {
-        let witness = sample_witness();
-        let sp1_witness = raw_witness_to_sp1_witness(&witness).unwrap();
-        let _ = sp1_witness;
-    }
-
-    #[cfg(feature = "risc0")]
-    #[test]
-    fn risc0_witness_from_raw() {
-        let witness = sample_witness();
-        let rz_witness = raw_witness_to_risc0_witness(&witness).unwrap();
-        assert_eq!(rz_witness.oracle_data, b"oracle-preimages");
     }
 }

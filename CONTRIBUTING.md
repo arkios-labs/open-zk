@@ -36,7 +36,7 @@ just ci                                            # All of the above
 cd guests/range-ethereum/sp1 && cargo prove build --features sp1
 
 # RISC Zero
-cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
+cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
 ```
 
 ### Solidity Tests

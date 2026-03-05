@@ -18,16 +18,12 @@ fn image_id_to_bytes(image_id: &[u32; 8]) -> [u8; 32] {
 /// The oracle_data contains rkyv-serialized preimages (including boot info
 /// as local preimage keys). The guest reads a single `Vec<u8>` from stdin.
 pub struct RiscZeroWitness {
-    /// Serialized oracle preimage data (rkyv BTreeMap) for the guest pipeline.
     pub oracle_data: Vec<u8>,
 }
 
 impl WitnessInput for RiscZeroWitness {}
 
 impl RiscZeroWitness {
-    /// Build a RISC Zero `ExecutorEnv` from the oracle data.
-    ///
-    /// Writes a single `Vec<u8>` matching the guest's `io.read::<Vec<u8>>()`.
     fn build_env(&self) -> Result<ExecutorEnv<'static>, RiscZeroProverError> {
         ExecutorEnv::builder()
             .write(&self.oracle_data)
@@ -87,6 +83,12 @@ impl RiscZeroProverBackend {
     }
 }
 
+impl Default for RiscZeroProverBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ProverBackend for RiscZeroProverBackend {
     type Witness = RiscZeroWitness;
@@ -108,9 +110,6 @@ impl ProverBackend for RiscZeroProverBackend {
         let program_id = B256::from(program.image_id_bytes);
 
         let opts = match mode {
-            // In dev mode (RISC0_DEV_MODE=1), default opts produce fast dev receipts.
-            // In production, this would do a full prove — but execute-only callers
-            // should use dev mode for fast turnaround.
             ProvingMode::Execute => ProverOpts::default(),
             ProvingMode::Compressed => ProverOpts::succinct(),
             ProvingMode::Groth16 => ProverOpts::groth16(),

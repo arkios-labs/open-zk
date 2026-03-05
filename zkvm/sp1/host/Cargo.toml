@@ -1,0 +1,16 @@
+[package]
+name = "open-zk-sp1"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SP1 host-side backend: prover, ELF loading, and witness adapter"
+
+[dependencies]
+open-zk-core = { workspace = true }
+alloy-primitives = { workspace = true }
+sp1-sdk = { workspace = true }
+bincode = "1"
+async-trait = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

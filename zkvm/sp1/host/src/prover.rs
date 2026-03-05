@@ -182,9 +182,8 @@ impl ProverBackend for Sp1ProverBackend {
 
         Ok(CostEstimate {
             estimated_cycles: cycles,
-            // Rough estimate: ~$0.01 per 10M cycles on Succinct Network
             estimated_cost_usd: (cycles as f64) / 10_000_000.0 * 0.01,
-            estimated_duration_secs: cycles / 1_000_000, // ~1M cycles/sec
+            estimated_duration_secs: cycles / 1_000_000,
         })
     }
 }

@@ -142,7 +142,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target/riscv-guest
-          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'guest/**', 'build/risc0/**') }}
+          key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'guest/**', 'zkvm/risc0/**') }}
 
       - name: Install RISC Zero toolchain
         if: steps.cache-risc0-elf.outputs.cache-hit != 'true'
@@ -154,7 +154,7 @@ jobs:
         if: steps.cache-risc0-elf.outputs.cache-hit != 'true'
         run: |
           export PATH="$HOME/.risc0/bin:$PATH"
-          cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build --release
+          cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build --release
 
       - name: Start devnet
         run: |

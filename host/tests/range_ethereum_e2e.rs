@@ -6,7 +6,7 @@
 //!   - Running OP Stack devnet (`just devnet-up`)
 //!   - SP1 ELF built: `cd guests/range-ethereum && cargo prove build --features sp1`
 //!   - RISC Zero ELF built:
-//!     cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build
+//!     cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
 //!
 //! Run (one at a time, never in parallel):
 //!   SP1_PROVER=mock cargo test -p open-zk-host --features "sp1,kona" \

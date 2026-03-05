@@ -15,9 +15,11 @@ fn main() {
                 opts.use_docker = Some(
                     risc0_build::DockerOptionsBuilder::default()
                         .root_dir({
-                            // build/risc0/ → build/ → repo root
+                            // zkvm/risc0/host/ → zkvm/risc0/ → zkvm/ → repo root
                             let cwd = std::env::current_dir().unwrap();
                             cwd.parent()
+                                .unwrap()
+                                .parent()
                                 .unwrap()
                                 .parent()
                                 .map(|d| d.to_path_buf())

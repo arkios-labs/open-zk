@@ -8,7 +8,8 @@ members = [
     "orchestrator",
     "onchain",
     "cli",
-    "build/risc0",
+    "zkvm/sp1/host",
+    "zkvm/risc0/host",
 ]
 exclude = [
     "guests/range-ethereum",
@@ -83,8 +84,9 @@ sp1-zkvm = "6"
 risc0-zkvm = "3"
 risc0-build = "3"
 
-# Build crates
-open-zk-build-risc0 = { path = "build/risc0" }
+# zkVM host crates
+open-zk-sp1 = { path = "zkvm/sp1/host" }
+open-zk-risc0 = { path = "zkvm/risc0/host" }
 
 # Serialization (zero-copy)
 rkyv = { version = "0.7", default-features = false }
