@@ -4,7 +4,7 @@
 //! Pipeline logic is shared via `run_range_program()`.
 
 #![no_main]
-#![cfg_attr(not(any(feature = "sp1", feature = "risc0", test)), no_std)]
+#![cfg_attr(not(test), no_std)]
 
 extern crate alloc;
 
@@ -14,7 +14,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use da_source::CelestiaDataSource;
 use kona_proof::l1::OracleL1ChainProvider;
-use open_zk_core::traits::ZkvmReader;
+use open_zk_core::traits::{ZkvmReader, ZkvmWriter};
 use open_zk_guest::oracle::PreimageStore;
 use open_zk_guest::pipeline::{DaSourceFactory, PreimageOracle};
 
@@ -40,7 +40,11 @@ impl DaSourceFactory for CelestiaDa {
 }
 
 fn main() {
-    let io = open_zk_guest::io();
+    #[cfg(feature = "sp1")]
+    let io = open_zk_sp1_guest::Sp1Io;
+    #[cfg(feature = "risc0")]
+    let io = open_zk_risc0_guest::RiscZeroIo;
+
     let oracle_bytes: Vec<u8> = io.read();
     let store =
         PreimageStore::from_rkyv_bytes(&oracle_bytes).expect("failed to deserialize oracle data");

@@ -8,12 +8,10 @@ edition = "2021"
 # Build:
 #   cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
 
-[features]
-risc0 = ["guest-range-ethereum/risc0", "dep:risc0-zkvm"]
-
 [dependencies]
 guest-range-ethereum = { path = "..", default-features = false }
-risc0-zkvm = { version = "3", optional = true, default-features = false, features = ["std", "heap-embedded-alloc", "unstable"] }
+open-zk-risc0-guest = { path = "../../../../zkvm/risc0/guest" }
+risc0-zkvm = { version = "3", default-features = false, features = ["std", "heap-embedded-alloc", "unstable"] }
 
 [profile.release]
 opt-level = 3

@@ -18,6 +18,8 @@ exclude = [
     "l2-finality/guests/range-celestia",
     "l2-finality/guests/range-eigenda",
     "l2-finality/guests/aggregation",
+    "zkvm/sp1/guest",
+    "zkvm/risc0/guest",
 ]
 
 [workspace.package]

@@ -9,7 +9,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use kona_derive::EthereumDataSource;
 use kona_proof::l1::{OracleBlobProvider, OracleL1ChainProvider};
-use open_zk_core::traits::ZkvmReader;
+use open_zk_core::traits::{ZkvmReader, ZkvmWriter};
 use open_zk_guest::oracle::PreimageStore;
 use open_zk_guest::pipeline::{DaSourceFactory, PreimageOracle};
 
@@ -32,10 +32,9 @@ impl DaSourceFactory for EthereumDa {
     }
 }
 
-pub fn guest_main() {
-    let io = open_zk_guest::io();
+pub fn guest_main(io: &(impl ZkvmReader + ZkvmWriter)) {
     let oracle_bytes: Vec<u8> = io.read();
     let store =
         PreimageStore::from_rkyv_bytes(&oracle_bytes).expect("failed to deserialize oracle data");
-    open_zk_guest::pipeline::run(EthereumDa, store, &io);
+    open_zk_guest::pipeline::run(EthereumDa, store, io);
 }

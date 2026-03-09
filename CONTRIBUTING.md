@@ -33,7 +33,7 @@ just ci                                            # All of the above
 
 ```bash
 # SP1
-cd guests/range-ethereum/sp1 && cargo prove build --features sp1
+cd l2-finality/guests/range-ethereum/sp1 && cargo prove build
 
 # RISC Zero
 cargo build -p open-zk-risc0 --features rebuild-guest,debug-guest-build
@@ -126,14 +126,16 @@ core/                         → open-zk-core         # Traits + types (no_std)
 sdk/                          → open-zk              # Public SDK (config, re-exports)
 cli/                          → open-zk-cli          # CLI binary
 
-l2-finality/guest/            → open-zk-guest        # Guest-side I/O + pipeline
+l2-finality/guest/            → open-zk-guest        # Guest-side oracle + pipeline (no_std)
 l2-finality/host/             → open-zk-host         # Witness generation
 l2-finality/orchestrator/     → open-zk-orchestrator # Intent resolver + engine
 l2-finality/onchain/          → open-zk-contracts    # On-chain ABI bindings
 l2-finality/guests/           # Guest programs (workspace-excluded)
 
 zkvm/sp1/host/                → open-zk-sp1          # SP1 prover + witness adapter
+zkvm/sp1/guest/               → open-zk-sp1-guest    # SP1 zkVM I/O adapter (no_std)
 zkvm/risc0/host/              → open-zk-risc0        # RISC Zero prover + ELF builder
+zkvm/risc0/guest/             → open-zk-risc0-guest  # RISC Zero zkVM I/O adapter (no_std)
 ```
 
 ### Crate Dependency Direction
@@ -154,4 +156,4 @@ core  ←  contracts
 ### Feature Flags
 
 - `core`: `std` (default) — host environment. Can be used with `no_std` inside guest (zkVM).
-- `guest`: `sp1` | `risc0` — compile-time zkVM backend selection.
+- `guest`: `kona`, `pipeline` — oracle and derivation pipeline support. No zkVM-specific features (I/O adapters live in `zkvm/*/guest/`).

@@ -20,7 +20,10 @@ sp1_zkvm::entrypoint!(main);
 risc0_zkvm::guest::entry!(main);
 
 fn main() {
-    let io = open_zk_guest::io();
+    #[cfg(feature = "sp1")]
+    let io = open_zk_sp1_guest::Sp1Io;
+    #[cfg(feature = "risc0")]
+    let io = open_zk_risc0_guest::RiscZeroIo;
 
     // Read the number of range proofs and the expected program verification key
     let num_proofs: u32 = io.read();

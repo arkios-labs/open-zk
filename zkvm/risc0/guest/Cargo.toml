@@ -1,0 +1,12 @@
+[package]
+name = "open-zk-risc0-guest"
+version = "0.1.0"
+edition = "2021"
+description = "RISC Zero zkVM I/O adapter for guest programs"
+
+# This crate is NOT a workspace member — cross-compiled for riscv32im-risc0-zkvm-elf.
+
+[dependencies]
+open-zk-core = { path = "../../../core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
+risc0-zkvm = { version = "3", default-features = false, features = ["std", "heap-embedded-alloc", "unstable"] }

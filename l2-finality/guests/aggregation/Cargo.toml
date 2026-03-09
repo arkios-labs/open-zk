@@ -9,14 +9,19 @@ edition = "2021"
 #   RISC Zero: cd guests/aggregation && cargo risc0 build --features risc0
 
 [features]
-sp1 = ["open-zk-guest/sp1"]
-risc0 = ["open-zk-guest/risc0"]
+sp1 = ["dep:open-zk-sp1-guest", "dep:sp1-zkvm"]
+risc0 = ["dep:open-zk-risc0-guest", "dep:risc0-zkvm"]
 
 [dependencies]
-open-zk-guest = { path = "../../guest", default-features = false }
 open-zk-core = { path = "../../../core", default-features = false }
+open-zk-sp1-guest = { path = "../../../zkvm/sp1/guest", optional = true }
+open-zk-risc0-guest = { path = "../../../zkvm/risc0/guest", optional = true }
 alloy-primitives = { version = "1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive"] }
+
+# zkVM backends
+sp1-zkvm = { version = "6", optional = true }
+risc0-zkvm = { version = "3", optional = true }
 
 [profile.release]
 opt-level = 3

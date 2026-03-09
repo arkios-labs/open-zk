@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), no_std)]
+
 use open_zk_core::traits::{ZkvmComposer, ZkvmReader, ZkvmWriter};
 use serde::{de::DeserializeOwned, Serialize};
 

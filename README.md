@@ -249,7 +249,9 @@ graph LR
 | Crate | Path | Description |
 |-------|------|-------------|
 | `open-zk-sp1` | `zkvm/sp1/host/` | SP1 prover backend, ELF loading, witness adapter |
+| `open-zk-sp1-guest` | `zkvm/sp1/guest/` | SP1 zkVM I/O adapter (`no_std`, cross-compiled) |
 | `open-zk-risc0` | `zkvm/risc0/host/` | RISC Zero prover backend, ELF builder, witness adapter |
+| `open-zk-risc0-guest` | `zkvm/risc0/guest/` | RISC Zero zkVM I/O adapter (`no_std`, cross-compiled) |
 
 **Guest Programs** (compiled separately, not workspace members):
 

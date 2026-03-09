@@ -76,7 +76,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: l2-finality/guests/range-ethereum/sp1/target/elf-compilation
-          key: sp1-elf-${{ hashFiles('l2-finality/guests/range-ethereum/src/**', 'l2-finality/guests/range-ethereum/sp1/**', 'l2-finality/guests/range-ethereum/Cargo.toml', 'l2-finality/guest/**') }}
+          key: sp1-elf-${{ hashFiles('l2-finality/guests/range-ethereum/src/**', 'l2-finality/guests/range-ethereum/sp1/**', 'l2-finality/guests/range-ethereum/Cargo.toml', 'l2-finality/guest/**', 'zkvm/sp1/guest/**') }}
 
       - name: Install SP1 toolchain
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
@@ -88,7 +88,7 @@ jobs:
       - name: Build SP1 guest ELF
         if: steps.cache-sp1-elf.outputs.cache-hit != 'true'
         run: |
-          cd l2-finality/guests/range-ethereum/sp1 && ~/.sp1/bin/cargo-prove prove build --features sp1
+          cd l2-finality/guests/range-ethereum/sp1 && ~/.sp1/bin/cargo-prove prove build
 
       - uses: actions/setup-go@v5
         with:

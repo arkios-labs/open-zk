@@ -1,0 +1,13 @@
+[package]
+name = "open-zk-sp1-guest"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 zkVM I/O adapter for guest programs"
+
+# This crate is NOT a workspace member — cross-compiled for riscv32im-succinct-zkvm-elf.
+
+[dependencies]
+open-zk-core = { path = "../../../core", default-features = false }
+serde = { version = "1", default-features = false, features = ["derive"] }
+sp1-zkvm = { version = "6", features = ["verify"] }
+sha2 = { version = "0.10", default-features = false }

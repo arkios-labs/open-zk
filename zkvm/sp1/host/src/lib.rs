@@ -1,6 +1,6 @@
+mod elf;
 mod prover;
 mod witness;
-mod elf;
 
 pub use prover::{Sp1Program, Sp1ProverBackend, Sp1ProverError, Sp1Witness};
 pub use witness::raw_witness_to_sp1_witness;
