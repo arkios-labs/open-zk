@@ -25,7 +25,14 @@ use open_zk_core::types::{ProofRequest, ProvingMode, StateTransitionJournal};
 use open_zk_host::witness::RpcWitnessProvider;
 use std::time::Instant;
 
-async fn generate_witness() -> open_zk_core::traits::RawWitness {
+/// Witness along with the snapshot of L1/L2 state used during generation.
+struct WitnessWithContext {
+    witness: open_zk_core::traits::RawWitness,
+    l1_head: alloy_primitives::B256,
+    l2_start_output_root: alloy_primitives::B256,
+}
+
+async fn generate_witness() -> WitnessWithContext {
     let l1_head = get_l1_head().await;
     let l2_start_output_root = get_l2_output_root(1).await;
     println!("L1 head: {l1_head}");
@@ -58,12 +65,16 @@ async fn generate_witness() -> open_zk_core::traits::RawWitness {
         start.elapsed().as_secs_f64(),
         witness.oracle_data.len()
     );
-    witness
+    WitnessWithContext {
+        witness,
+        l1_head,
+        l2_start_output_root,
+    }
 }
 
-async fn verify_journal(result: &open_zk_core::types::ProofArtifact) {
-    let l1_head = get_l1_head().await;
-    let l2_start_output_root = get_l2_output_root(1).await;
+async fn verify_journal(result: &open_zk_core::types::ProofArtifact, ctx: &WitnessWithContext) {
+    let l1_head = ctx.l1_head;
+    let l2_start_output_root = ctx.l2_start_output_root;
 
     assert!(
         !result.public_values.is_empty(),
@@ -102,10 +113,10 @@ async fn test_range_ethereum_sp1_e2e_devnet() {
     use sp1_sdk::SP1Stdin;
 
     init_tracing();
-    let witness = generate_witness().await;
+    let ctx = generate_witness().await;
 
     let mut stdin = SP1Stdin::new();
-    stdin.write(&witness.oracle_data);
+    stdin.write(&ctx.witness.oracle_data);
     let sp1_witness = Sp1Witness { stdin };
 
     let elf = open_zk_host::include_range_ethereum_elf!();
@@ -125,7 +136,7 @@ async fn test_range_ethereum_sp1_e2e_devnet() {
     println!("  cycle_count: {:?}", result.cycle_count);
     println!("  public_values: {} bytes", result.public_values.len());
 
-    verify_journal(&result).await;
+    verify_journal(&result, &ctx).await;
     println!("E2E test PASSED — range-ethereum guest correctly derived L2 state transition (SP1)");
 }
 
@@ -136,10 +147,10 @@ async fn test_range_ethereum_risc0_e2e_devnet() {
     use open_zk_host::prover::{RiscZeroProgram, RiscZeroProverBackend, RiscZeroWitness};
 
     init_tracing();
-    let witness = generate_witness().await;
+    let ctx = generate_witness().await;
 
     let rz_witness = RiscZeroWitness {
-        oracle_data: witness.oracle_data,
+        oracle_data: ctx.witness.oracle_data.clone(),
     };
 
     let elf = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ELF;
@@ -160,7 +171,7 @@ async fn test_range_ethereum_risc0_e2e_devnet() {
     println!("  cycle_count: {:?}", result.cycle_count);
     println!("  public_values: {} bytes", result.public_values.len());
 
-    verify_journal(&result).await;
+    verify_journal(&result, &ctx).await;
     println!(
         "E2E test PASSED — range-ethereum guest correctly derived L2 state transition (RISC Zero)"
     );
