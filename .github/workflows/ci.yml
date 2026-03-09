@@ -59,7 +59,7 @@ jobs:
   e2e-sp1:
     name: E2E (SP1)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [test]
     steps:
       - uses: actions/checkout@v4
@@ -88,16 +88,32 @@ jobs:
         run: |
           cd guests/range-ethereum/sp1 && ~/.sp1/bin/cargo-prove prove build --features sp1
 
+      - name: Pre-compile test binary
+        run: |
+          cargo test -p open-zk-host \
+            --features "sp1,kona" --test range_ethereum_e2e \
+            --release --no-run
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
           cache: false
 
-      - name: Start devnet
+      - name: Cache devnet
+        id: cache-devnet
+        uses: actions/cache@v4
+        with:
+          path: optimism
+          key: devnet-optimism-v1.9.1
+
+      - name: Clone devnet
+        if: steps.cache-devnet.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch v1.9.1 --recursive \
             https://github.com/ethereum-optimism/optimism.git
-          make -C optimism devnet-up
+
+      - name: Start devnet
+        run: make -C optimism devnet-up
 
       - name: Wait for devnet
         run: |
@@ -123,7 +139,7 @@ jobs:
   e2e-risc0:
     name: E2E (RISC Zero)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [test]
     steps:
       - uses: actions/checkout@v4
@@ -132,10 +148,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-          cache: false
 
       - name: Cache RISC Zero ELF
         id: cache-risc0-elf
@@ -156,11 +168,32 @@ jobs:
           export PATH="$HOME/.risc0/bin:$PATH"
           cargo build -p open-zk-build-risc0 --features rebuild-guest,debug-guest-build --release
 
-      - name: Start devnet
+      - name: Pre-compile test binary
+        run: |
+          RISC0_DEV_MODE=1 cargo test -p open-zk-host \
+            --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
+            --release --no-run
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: false
+
+      - name: Cache devnet
+        id: cache-devnet
+        uses: actions/cache@v4
+        with:
+          path: optimism
+          key: devnet-optimism-v1.9.1
+
+      - name: Clone devnet
+        if: steps.cache-devnet.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch v1.9.1 --recursive \
             https://github.com/ethereum-optimism/optimism.git
-          make -C optimism devnet-up
+
+      - name: Start devnet
+        run: make -C optimism devnet-up
 
       - name: Wait for devnet
         run: |
