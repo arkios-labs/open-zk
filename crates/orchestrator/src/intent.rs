@@ -11,50 +11,40 @@ pub struct ResolvedIntent {
 }
 
 /// Resolves high-level user intent into concrete proving parameters.
+///
+/// Separation of concerns:
+/// - `security` + `target_finality` → proof mode (Beacon/Sentinel) + aggregation window
+/// - `backend` → which zkVM to use (independent of security level)
+///
+/// When `backend = Auto`, the first entry in `allowed_backends` is used.
+/// Future versions will select dynamically based on cost/latency/availability.
 pub struct IntentResolver;
 
 impl IntentResolver {
+    /// Default allowed backends when none are specified.
+    pub const DEFAULT_ALLOWED_BACKENDS: &[ZkvmBackend] = &[ZkvmBackend::Sp1, ZkvmBackend::RiscZero];
+
     /// Resolve user-declared constraints into a concrete proving plan.
-    ///
-    /// The `backend` parameter is the user's explicit choice:
-    /// - `Sp1` / `RiscZero` / `Mock` — use as-is.
-    /// - `Auto` — dynamically select based on `security` and `target_finality`.
-    ///   Currently a placeholder; will integrate backend pricing APIs in the future.
-    ///
-    /// Rules for `Auto` resolution:
-    /// - security = Maximum → Beacon + SP1
-    /// - security = Economy → Sentinel + RISC Zero
-    /// - security = Standard + finality ≤ 30min → Beacon + SP1
-    /// - security = Standard + finality > 30min → Sentinel + RISC Zero
     pub fn resolve(
         backend: ZkvmBackend,
+        allowed_backends: &[ZkvmBackend],
         target_finality: Duration,
         security: SecurityLevel,
     ) -> ResolvedIntent {
-        let (proof_mode, resolved_backend) = match backend {
-            ZkvmBackend::Auto => Self::resolve_auto(target_finality, security),
-            ZkvmBackend::Mock => (ProofMode::Beacon, ZkvmBackend::Mock),
-            explicit => {
-                // User chose a specific backend; derive proof_mode from security/finality.
-                let proof_mode = match security {
-                    SecurityLevel::Maximum => ProofMode::Beacon,
-                    SecurityLevel::Economy => ProofMode::Sentinel,
-                    SecurityLevel::Standard => {
-                        if target_finality <= Duration::from_secs(30 * 60) {
-                            ProofMode::Beacon
-                        } else {
-                            ProofMode::Sentinel
-                        }
-                    }
-                };
-                (proof_mode, explicit)
-            }
-        };
+        // 1. Security + finality → proof mode
+        let proof_mode = Self::resolve_proof_mode(target_finality, security);
 
+        // 2. Security → aggregation window
         let aggregation_window = match security {
             SecurityLevel::Maximum => 10,
             SecurityLevel::Standard => 100,
             SecurityLevel::Economy => 1000,
+        };
+
+        // 3. Backend selection (independent of security)
+        let resolved_backend = match backend {
+            ZkvmBackend::Auto => Self::resolve_auto(allowed_backends),
+            explicit => explicit,
         };
 
         ResolvedIntent {
@@ -65,24 +55,30 @@ impl IntentResolver {
         }
     }
 
-    /// Auto-select backend based on security level and target finality.
-    ///
-    /// Future: integrate with backend pricing APIs for real cost optimization.
-    fn resolve_auto(
-        target_finality: Duration,
-        security: SecurityLevel,
-    ) -> (ProofMode, ZkvmBackend) {
+    /// Derive proof mode from security level and target finality.
+    fn resolve_proof_mode(target_finality: Duration, security: SecurityLevel) -> ProofMode {
         match security {
-            SecurityLevel::Maximum => (ProofMode::Beacon, ZkvmBackend::Sp1),
-            SecurityLevel::Economy => (ProofMode::Sentinel, ZkvmBackend::RiscZero),
+            SecurityLevel::Maximum => ProofMode::Beacon,
+            SecurityLevel::Economy => ProofMode::Sentinel,
             SecurityLevel::Standard => {
                 if target_finality <= Duration::from_secs(30 * 60) {
-                    (ProofMode::Beacon, ZkvmBackend::Sp1)
+                    ProofMode::Beacon
                 } else {
-                    (ProofMode::Sentinel, ZkvmBackend::RiscZero)
+                    ProofMode::Sentinel
                 }
             }
         }
+    }
+
+    /// Select backend from allowed list.
+    ///
+    /// Currently picks the first entry. Future: integrate pricing APIs
+    /// for dynamic cost/latency-based selection.
+    fn resolve_auto(allowed_backends: &[ZkvmBackend]) -> ZkvmBackend {
+        allowed_backends
+            .first()
+            .copied()
+            .unwrap_or(ZkvmBackend::Sp1)
     }
 }
 
@@ -94,6 +90,7 @@ mod tests {
     fn explicit_sp1_beacon() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Sp1,
+            &[],
             Duration::from_secs(600),
             SecurityLevel::Standard,
         );
@@ -106,6 +103,7 @@ mod tests {
     fn explicit_risc0_sentinel() {
         let result = IntentResolver::resolve(
             ZkvmBackend::RiscZero,
+            &[],
             Duration::from_secs(7200),
             SecurityLevel::Standard,
         );
@@ -114,33 +112,56 @@ mod tests {
     }
 
     #[test]
-    fn auto_max_security_beacon_sp1() {
+    fn auto_picks_first_allowed() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Auto,
-            Duration::from_secs(3600),
+            &[ZkvmBackend::RiscZero, ZkvmBackend::Sp1],
+            Duration::from_secs(600),
+            SecurityLevel::Standard,
+        );
+        assert_eq!(result.backend, ZkvmBackend::RiscZero);
+    }
+
+    #[test]
+    fn auto_defaults_to_sp1_when_empty() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Auto,
+            &[],
+            Duration::from_secs(600),
+            SecurityLevel::Standard,
+        );
+        assert_eq!(result.backend, ZkvmBackend::Sp1);
+    }
+
+    #[test]
+    fn security_maximum_always_beacon() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Sp1,
+            &[],
+            Duration::from_secs(7200),
             SecurityLevel::Maximum,
         );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkvmBackend::Sp1);
         assert_eq!(result.aggregation_window, 10);
     }
 
     #[test]
-    fn auto_economy_sentinel_risc0() {
+    fn security_economy_always_sentinel() {
         let result = IntentResolver::resolve(
-            ZkvmBackend::Auto,
+            ZkvmBackend::Sp1,
+            &[],
             Duration::from_secs(60),
             SecurityLevel::Economy,
         );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
-        assert_eq!(result.backend, ZkvmBackend::RiscZero);
         assert_eq!(result.aggregation_window, 1000);
     }
 
     #[test]
-    fn auto_standard_fast_finality_beacon_sp1() {
+    fn standard_fast_finality_beacon() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Auto,
+            IntentResolver::DEFAULT_ALLOWED_BACKENDS,
             Duration::from_secs(600),
             SecurityLevel::Standard,
         );
@@ -150,24 +171,26 @@ mod tests {
     }
 
     #[test]
-    fn auto_standard_slow_finality_sentinel_risc0() {
+    fn standard_slow_finality_sentinel() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Auto,
+            IntentResolver::DEFAULT_ALLOWED_BACKENDS,
             Duration::from_secs(7200),
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
-        assert_eq!(result.backend, ZkvmBackend::RiscZero);
+        assert_eq!(result.backend, ZkvmBackend::Sp1);
     }
 
     #[test]
-    fn mock_backend_always_beacon() {
+    fn mock_backend_respects_security() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Mock,
+            &[],
             Duration::from_secs(7200),
             SecurityLevel::Economy,
         );
         assert_eq!(result.backend, ZkvmBackend::Mock);
-        assert_eq!(result.proof_mode, ProofMode::Beacon);
+        assert_eq!(result.proof_mode, ProofMode::Sentinel);
     }
 }

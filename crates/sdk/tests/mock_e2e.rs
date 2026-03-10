@@ -162,7 +162,8 @@ async fn test_no_pending_blocks_produces_no_requests() {
     assert_eq!(range, None);
 }
 
-/// Economy security → Sentinel + RiscZero + window=1000.
+/// Economy security → Sentinel + window=1000.
+/// Backend is independent of security (Auto picks first from allowlist).
 /// A 250-block range fits in a single request.
 #[tokio::test]
 async fn test_economy_config_resolves_sentinel() {
@@ -177,7 +178,8 @@ async fn test_economy_config_resolves_sentinel() {
 
     let intent = config.resolve();
     assert_eq!(intent.proof_mode, ProofMode::Sentinel);
-    assert_eq!(intent.backend, ZkvmBackend::RiscZero);
+    // Auto picks first from default allowlist (SP1), not tied to security
+    assert_eq!(intent.backend, ZkvmBackend::Sp1);
     assert_eq!(intent.aggregation_window, 1000);
 
     // With a 250-block range and window=1000, we get a single request

@@ -6,6 +6,7 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct OpenZkConfig {
     pub backend: ZkvmBackend,
+    pub allowed_backends: Vec<ZkvmBackend>,
     pub target_finality: Duration,
     pub security: SecurityLevel,
     pub l1_rpc_url: String,
@@ -20,7 +21,12 @@ impl OpenZkConfig {
 
     /// Resolve this config into concrete proving parameters.
     pub fn resolve(&self) -> open_zk_orchestrator::ResolvedIntent {
-        IntentResolver::resolve(self.backend, self.target_finality, self.security)
+        IntentResolver::resolve(
+            self.backend,
+            &self.allowed_backends,
+            self.target_finality,
+            self.security,
+        )
     }
 }
 
@@ -28,6 +34,7 @@ impl OpenZkConfig {
 #[derive(Debug, Default)]
 pub struct OpenZkConfigBuilder {
     backend: Option<ZkvmBackend>,
+    allowed_backends: Option<Vec<ZkvmBackend>>,
     target_finality: Option<Duration>,
     security: Option<SecurityLevel>,
     l1_rpc_url: Option<String>,
@@ -44,6 +51,11 @@ pub enum ConfigError {
 impl OpenZkConfigBuilder {
     pub fn backend(mut self, backend: ZkvmBackend) -> Self {
         self.backend = Some(backend);
+        self
+    }
+
+    pub fn allowed_backends(mut self, backends: Vec<ZkvmBackend>) -> Self {
+        self.allowed_backends = Some(backends);
         self
     }
 
@@ -75,6 +87,9 @@ impl OpenZkConfigBuilder {
     pub fn build(self) -> Result<OpenZkConfig, ConfigError> {
         Ok(OpenZkConfig {
             backend: self.backend.unwrap_or(ZkvmBackend::Auto),
+            allowed_backends: self
+                .allowed_backends
+                .unwrap_or_else(|| IntentResolver::DEFAULT_ALLOWED_BACKENDS.to_vec()),
             target_finality: self.target_finality.unwrap_or(Duration::from_secs(30 * 60)),
             security: self.security.unwrap_or(SecurityLevel::Standard),
             l1_rpc_url: self
@@ -96,7 +111,7 @@ mod tests {
     use open_zk_core::types::{ProofMode, ZkvmBackend};
 
     #[test]
-    fn build_config_auto_backend() {
+    fn build_config_auto_backend_defaults() {
         let config = OpenZkConfig::builder()
             .target_finality(Duration::from_secs(600))
             .security(SecurityLevel::Standard)
@@ -107,16 +122,36 @@ mod tests {
             .unwrap();
 
         assert_eq!(config.backend, ZkvmBackend::Auto);
+        assert_eq!(
+            config.allowed_backends,
+            vec![ZkvmBackend::Sp1, ZkvmBackend::RiscZero]
+        );
         let resolved = config.resolve();
         assert_eq!(resolved.proof_mode, ProofMode::Beacon);
+        // Auto picks first from allowed_backends
         assert_eq!(resolved.backend, ZkvmBackend::Sp1);
     }
 
     #[test]
-    fn build_config_explicit_sp1() {
+    fn auto_with_custom_allowlist() {
+        let config = OpenZkConfig::builder()
+            .allowed_backends(vec![ZkvmBackend::RiscZero])
+            .security(SecurityLevel::Standard)
+            .l1_rpc_url("http://localhost:8545")
+            .l2_rpc_url("http://localhost:9545")
+            .l1_beacon_url("http://localhost:5052")
+            .build()
+            .unwrap();
+
+        let resolved = config.resolve();
+        assert_eq!(resolved.backend, ZkvmBackend::RiscZero);
+    }
+
+    #[test]
+    fn explicit_backend_ignores_allowlist() {
         let config = OpenZkConfig::builder()
             .backend(ZkvmBackend::Sp1)
-            .target_finality(Duration::from_secs(600))
+            .allowed_backends(vec![ZkvmBackend::RiscZero])
             .security(SecurityLevel::Standard)
             .l1_rpc_url("http://localhost:8545")
             .l2_rpc_url("http://localhost:9545")

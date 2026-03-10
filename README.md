@@ -62,6 +62,7 @@ l1_beacon_url = "https://your-beacon-node:5052"
 
 [proving]
 backend = "auto"                # "auto" | "sp1" | "risc0" | "mock"
+allowed_backends = ["sp1", "risc0"]  # Vendor allowlist for "auto" mode
 mode = "beacon"                 # "beacon" (validity) | "sentinel" (fault proof)
 security = "standard"           # "maximum" | "standard" | "economy"
 target_finality_secs = 1800     # Target finality time in seconds
@@ -72,22 +73,28 @@ max_concurrent_proofs = 4       # Parallel proof jobs
 
 | Field | Values | Default | Description |
 |-------|--------|---------|-------------|
-| `backend` | `auto`, `sp1`, `risc0`, `mock` | `auto` | zkVM backend (`auto` selects dynamically) |
+| `backend` | `auto`, `sp1`, `risc0`, `mock` | `auto` | zkVM backend (`auto` picks from allowlist) |
+| `allowed_backends` | list of `sp1`, `risc0` | `["sp1", "risc0"]` | Vendor allowlist for `auto` mode |
 | `mode` | `beacon`, `sentinel` | `beacon` | Proof mode (validity vs fault proof) |
-| `security` | `maximum`, `standard`, `economy` | `standard` | Security / cost trade-off level |
+| `security` | `maximum`, `standard`, `economy` | `standard` | Proof mode + aggregation frequency |
 | `target_finality_secs` | seconds | `1800` | Target finality time |
 | `max_concurrent_proofs` | integer | `4` | Max parallel proof generation jobs |
 
-**How the Intent Resolver maps your config to concrete parameters (when `backend = "auto"`):**
+**How the Intent Resolver maps your config to concrete parameters:**
 
-| Security | Proof Mode | Backend | Aggregation Window |
-|----------|------------|---------|-------------------|
-| `maximum` | Beacon (always) | SP1 | 10 blocks |
-| `standard` + finality ≤ 30min | Beacon | SP1 | 100 blocks |
-| `standard` + finality > 30min | Sentinel | RISC Zero | 100 blocks |
-| `economy` | Sentinel (always) | RISC Zero | 1000 blocks |
+`security` and `target_finality_secs` determine the **proof mode** and **aggregation window** (independent of backend choice):
 
-> When `backend` is set to `sp1`, `risc0`, or `mock`, the chosen backend is used directly. The proof mode (Beacon/Sentinel) is still derived from `security` and `target_finality_secs`. Future versions will integrate backend pricing APIs for smarter `auto` selection.
+| Security | Proof Mode | Aggregation Window |
+|----------|------------|-------------------|
+| `maximum` | Beacon (always) | 10 blocks |
+| `standard` + finality ≤ 30min | Beacon | 100 blocks |
+| `standard` + finality > 30min | Sentinel | 100 blocks |
+| `economy` | Sentinel (always) | 1000 blocks |
+
+`backend` determines which zkVM to use:
+- `"sp1"` / `"risc0"` — use that backend directly.
+- `"auto"` — select from `allowed_backends` (currently picks the first entry; future versions will optimize based on cost, latency, and availability via pricing APIs).
+- `"mock"` — dummy proofs for testing.
 
 #### 3. Deploy On-Chain Contracts
 

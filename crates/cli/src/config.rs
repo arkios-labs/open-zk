@@ -14,6 +14,7 @@ use std::path::Path;
 ///
 /// [proving]
 /// backend = "auto"
+/// allowed_backends = ["sp1", "risc0"]
 /// mode = "beacon"
 /// security = "standard"
 /// target_finality_secs = 1800
@@ -43,6 +44,8 @@ pub struct NetworkConfig {
 pub struct ProvingConfig {
     #[serde(default = "default_backend")]
     pub backend: String,
+    #[serde(default = "default_allowed_backends")]
+    pub allowed_backends: Vec<String>,
     #[serde(default = "default_mode")]
     pub mode: String,
     #[serde(default = "default_security")]
@@ -55,6 +58,9 @@ pub struct ProvingConfig {
 
 fn default_backend() -> String {
     "auto".to_string()
+}
+fn default_allowed_backends() -> Vec<String> {
+    vec!["sp1".to_string(), "risc0".to_string()]
 }
 fn default_mode() -> String {
     "beacon".to_string()
@@ -73,6 +79,7 @@ impl Default for ProvingConfig {
     fn default() -> Self {
         Self {
             backend: default_backend(),
+            allowed_backends: default_allowed_backends(),
             mode: default_mode(),
             security: default_security(),
             target_finality_secs: default_target_finality(),
@@ -104,8 +111,20 @@ impl CliConfig {
             _ => open_zk_core::types::ZkvmBackend::Auto,
         };
 
+        let allowed_backends: Vec<open_zk_core::types::ZkvmBackend> = self
+            .proving
+            .allowed_backends
+            .iter()
+            .filter_map(|s| match s.as_str() {
+                "sp1" => Some(open_zk_core::types::ZkvmBackend::Sp1),
+                "risc0" => Some(open_zk_core::types::ZkvmBackend::RiscZero),
+                _ => None,
+            })
+            .collect();
+
         open_zk::OpenZkConfig::builder()
             .backend(backend)
+            .allowed_backends(allowed_backends)
             .target_finality(std::time::Duration::from_secs(
                 self.proving.target_finality_secs,
             ))
