@@ -155,9 +155,9 @@ open-zk status
 
 | Contract | Role |
 |----------|------|
-| `IProofVerifier` | Verifies zkVM proofs (SP1 / RISC Zero) against a program verification key |
-| `IOpenZkL2OutputOracle` | Accepts proven L2 state transitions, tracks latest proven block |
-| `IOpenZkDisputeGame` | Manages disputes: `challenge()` to dispute, `resolve()` with a ZK proof |
+| `OpenZkL2OutputOracle` | Accepts proven L2 state transitions, tracks latest proven block |
+| `OpenZkDisputeGame` | Manages disputes: `challenge()` to dispute, `resolve()` with a ZK proof |
+| `MockSP1Verifier` / `MockRiscZeroVerifier` | Always-passing verifiers for devnet testing |
 
 ## Architecture
 
