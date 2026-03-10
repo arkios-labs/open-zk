@@ -128,6 +128,13 @@ jobs:
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
+          echo "Waiting for OP Node to sync..."
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_outputAtBlock\",\"params\":[\"0x1\"],\"id\":1}" \
+            | grep -q outputRoot; do
+            sleep 3; done'
+          echo "OP Node synced."
 
       - name: Run SP1 E2E
         run: |
@@ -160,6 +167,8 @@ jobs:
           key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**', 'build/risc0/**') }}
 
       - name: Install RISC Zero toolchain
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -L https://risczero.com/install | bash
           ~/.risc0/bin/rzup install
@@ -208,6 +217,13 @@ jobs:
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
+          echo "Waiting for OP Node to sync..."
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_outputAtBlock\",\"params\":[\"0x1\"],\"id\":1}" \
+            | grep -q outputRoot; do
+            sleep 3; done'
+          echo "OP Node synced."
 
       - name: Run RISC Zero E2E
         run: |
