@@ -3,10 +3,11 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import {OpenZkL2OutputOracle} from "../src/OpenZkL2OutputOracle.sol";
+import {OpenZkDisputeGame} from "../src/OpenZkDisputeGame.sol";
 import {MockSP1Verifier} from "../src/mock/MockSP1Verifier.sol";
 import {MockRiscZeroVerifier} from "../src/mock/MockRiscZeroVerifier.sol";
 
-/// @notice Deploy mock verifiers + OpenZkL2OutputOracle to devnet.
+/// @notice Deploy mock verifiers + OpenZkL2OutputOracle (+ optional DisputeGame) to devnet.
 contract DeployDevnet is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -14,6 +15,10 @@ contract DeployDevnet is Script {
         // Program IDs can be overridden via env; defaults to zero for devnet.
         bytes32 sp1VKey = vm.envOr("SP1_PROGRAM_VKEY", bytes32(0));
         bytes32 risc0ImageId = vm.envOr("RISC0_IMAGE_ID", bytes32(0));
+
+        // DisputeGame config
+        bool deployDispute = vm.envOr("DEPLOY_DISPUTE_GAME", false);
+        uint256 challengeTimeout = vm.envOr("CHALLENGE_TIMEOUT", uint256(3600));
 
         vm.startBroadcast(deployerKey);
 
@@ -26,6 +31,19 @@ contract DeployDevnet is Script {
             sp1VKey,
             risc0ImageId
         );
+
+        if (deployDispute) {
+            OpenZkDisputeGame disputeGame = new OpenZkDisputeGame(
+                address(oracle),
+                address(mockSp1),
+                address(mockRisc0),
+                sp1VKey,
+                risc0ImageId,
+                challengeTimeout
+            );
+            console.log("OpenZkDisputeGame:      ", address(disputeGame));
+            console.log("  challengeTimeout:      ", challengeTimeout);
+        }
 
         vm.stopBroadcast();
 

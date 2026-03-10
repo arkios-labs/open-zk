@@ -34,6 +34,25 @@ sol! {
         /// Update the RISC Zero image ID (owner only).
         function setRisc0ImageId(bytes32 _imageId) external;
     }
+
+    /// OpenZkDisputeGame — matches the deployed Solidity contract.
+    #[sol(rpc)]
+    interface IOpenZkDisputeGame {
+        /// Challenge a proven output root.
+        function challenge(uint64 blockNumber) external;
+
+        /// Resolve a dispute with a ZK proof.
+        /// backend: 0 = SP1, 1 = RiscZero.
+        function resolve(
+            uint64 blockNumber,
+            bytes calldata publicValues,
+            bytes calldata proofBytes,
+            uint8 backend
+        ) external;
+
+        /// Check if a block is currently under dispute.
+        function isDisputed(uint64 blockNumber) external view returns (bool);
+    }
 }
 
 #[cfg(not(feature = "rpc"))]
@@ -66,5 +85,23 @@ sol! {
 
         /// Update the RISC Zero image ID (owner only).
         function setRisc0ImageId(bytes32 _imageId) external;
+    }
+
+    /// OpenZkDisputeGame — matches the deployed Solidity contract.
+    interface IOpenZkDisputeGame {
+        /// Challenge a proven output root.
+        function challenge(uint64 blockNumber) external;
+
+        /// Resolve a dispute with a ZK proof.
+        /// backend: 0 = SP1, 1 = RiscZero.
+        function resolve(
+            uint64 blockNumber,
+            bytes calldata publicValues,
+            bytes calldata proofBytes,
+            uint8 backend
+        ) external;
+
+        /// Check if a block is currently under dispute.
+        function isDisputed(uint64 blockNumber) external view returns (bool);
     }
 }

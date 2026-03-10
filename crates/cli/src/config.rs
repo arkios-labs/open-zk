@@ -32,6 +32,12 @@ pub struct NetworkConfig {
     pub l1_rpc_url: String,
     pub l2_rpc_url: String,
     pub l1_beacon_url: String,
+    /// OP Node RPC URL (optional, defaults to http://127.0.0.1:7545).
+    #[serde(default)]
+    pub op_node_url: Option<String>,
+    /// L2 chain ID (optional, defaults to 901 for devnet).
+    #[serde(default)]
+    pub chain_id: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,6 +136,8 @@ impl CliConfig {
                 l1_rpc_url: "http://localhost:8545".to_string(),
                 l2_rpc_url: "http://localhost:9545".to_string(),
                 l1_beacon_url: "http://localhost:5052".to_string(),
+                op_node_url: None,
+                chain_id: None,
             },
             proving: ProvingConfig::default(),
         };
@@ -170,6 +178,8 @@ max_concurrent_proofs = 4
                 l1_rpc_url: "http://l1:8545".to_string(),
                 l2_rpc_url: "http://l2:9545".to_string(),
                 l1_beacon_url: "http://beacon:5052".to_string(),
+                op_node_url: None,
+                chain_id: None,
             },
             proving: ProvingConfig::default(),
         };
@@ -193,6 +203,8 @@ max_concurrent_proofs = 4
                 l1_rpc_url: "http://l1:8545".to_string(),
                 l2_rpc_url: "http://l2:9545".to_string(),
                 l1_beacon_url: "http://beacon:5052".to_string(),
+                op_node_url: None,
+                chain_id: None,
             },
             proving: ProvingConfig {
                 backend: "mock".to_string(),
@@ -209,6 +221,8 @@ max_concurrent_proofs = 4
                 l1_rpc_url: "http://l1:8545".to_string(),
                 l2_rpc_url: "http://l2:9545".to_string(),
                 l1_beacon_url: "http://beacon:5052".to_string(),
+                op_node_url: None,
+                chain_id: None,
             },
             proving: ProvingConfig::default(),
         };

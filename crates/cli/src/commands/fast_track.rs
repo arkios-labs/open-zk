@@ -1,11 +1,11 @@
 //! `open-zk fast-track` — Deploy OpenZk contracts to a devnet.
 //!
-//! Deploys the L2OutputOracle and (optionally) DisputeGame contracts,
-//! configuring them for the running devnet. Uses pre-funded devnet
-//! accounts from the OP Stack devnet genesis.
+//! Deploys the L2OutputOracle and (optionally) DisputeGame contracts via
+//! `forge script`, configuring them for the running devnet.
 
 use alloy_primitives::Address;
 use clap::Args;
+use std::process::Command;
 use tracing::{info, warn};
 
 /// Default devnet RPC endpoints (OP Stack devnet-up).
@@ -69,13 +69,11 @@ pub async fn execute(args: FastTrackArgs) -> anyhow::Result<()> {
         "starting fast-track contract deployment"
     );
 
-    // Parse deployer key to verify it's valid hex
+    // Validate deployer key
     let deployer_key = args
         .deployer_key
         .strip_prefix("0x")
         .unwrap_or(&args.deployer_key);
-    let _owner_key = args.owner_key.strip_prefix("0x").unwrap_or(&args.owner_key);
-
     anyhow::ensure!(
         deployer_key.len() == 64 && deployer_key.chars().all(|c| c.is_ascii_hexdigit()),
         "invalid deployer key: must be 64 hex characters"
@@ -92,52 +90,24 @@ pub async fn execute(args: FastTrackArgs) -> anyhow::Result<()> {
     println!("L1 RPC:     {}", args.l1_rpc_url);
     println!("L2 RPC:     {}", args.l2_rpc_url);
     println!("L1 Beacon:  {}", args.l1_beacon_url);
-    println!("Mock mode:  {}", mock_mode);
+    println!("Mock mode:  {mock_mode}");
     println!();
 
-    // Step 1: Verify L1/L2 connectivity
-    info!("step 1/5: verifying RPC connectivity");
+    // Step 1: Verify RPC connectivity
+    info!("step 1/4: verifying RPC connectivity");
     verify_connectivity(&args.l1_rpc_url, &args.l2_rpc_url).await?;
 
-    // Step 2: Fetch the current L2 state
-    info!("step 2/5: fetching L2 chain state");
-    let l2_block = fetch_l2_latest_block(&args.l2_rpc_url).await?;
-    println!("Latest L2 block: {l2_block}");
+    // Step 2: Verify Foundry is installed
+    info!("step 2/4: checking Foundry installation");
+    check_foundry()?;
 
-    // Step 3: Deploy L2OutputOracle
-    info!("step 3/5: deploying L2OutputOracle");
-    println!(
-        "Deploying L2OutputOracle (starting block: {}, submission interval: {})...",
-        args.starting_block, args.submission_interval
-    );
-    // Contract deployment requires compiled Solidity bytecodes.
-    // For now, log the deployment parameters and return placeholder addresses.
-    let oracle_address = deploy_oracle_placeholder(&args)?;
-    println!("L2OutputOracle deployed at: {oracle_address}");
+    // Step 3: Deploy contracts via forge script
+    info!("step 3/4: deploying contracts via forge script");
+    let output = deploy_via_forge(&args)?;
 
-    // Step 4: Optionally deploy DisputeGame
-    let dispute_address = if args.with_dispute_game {
-        info!("step 4/5: deploying DisputeGame");
-        println!(
-            "Deploying DisputeGame (challenge timeout: {}s)...",
-            args.challenge_timeout
-        );
-        let addr = deploy_dispute_placeholder(&args)?;
-        println!("DisputeGame deployed at: {addr}");
-        Some(addr)
-    } else {
-        info!("step 4/5: skipping DisputeGame deployment (not requested)");
-        None
-    };
-
-    // Step 5: Verify deployment
-    info!("step 5/5: verifying deployment");
-    let result = DeploymentResult {
-        oracle_address,
-        dispute_game_address: dispute_address,
-        _deployer: Address::ZERO, // Would be derived from deployer_key
-        starting_block: args.starting_block,
-    };
+    // Step 4: Parse deployed addresses from forge output
+    info!("step 4/4: parsing deployment results");
+    let result = parse_deployment_output(&output, &args)?;
 
     println!();
     println!("Deployment Summary");
@@ -150,7 +120,7 @@ pub async fn execute(args: FastTrackArgs) -> anyhow::Result<()> {
     println!();
     println!("Save these addresses in your open-zk.toml to use with `open-zk serve`.");
 
-    // Write deployment info to a JSON file for downstream tools
+    // Write deployment info to JSON
     let deployment_json = serde_json::json!({
         "oracle_address": format!("{}", result.oracle_address),
         "dispute_game_address": result.dispute_game_address.map(|a| format!("{a}")),
@@ -194,43 +164,110 @@ async fn verify_connectivity(l1_rpc: &str, l2_rpc: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Fetch the latest L2 block number.
-async fn fetch_l2_latest_block(l2_rpc: &str) -> anyhow::Result<u64> {
-    use alloy_provider::{Provider, ProviderBuilder};
-
-    let l2_url: url::Url = l2_rpc.parse()?;
-    let l2_provider = ProviderBuilder::new().connect_http(l2_url);
-
-    let block_number = l2_provider
-        .get_block_number()
-        .await
-        .map_err(|e| anyhow::anyhow!("failed to get L2 block number: {e}"))?;
-
-    Ok(block_number)
+/// Check that `forge` is available on PATH.
+fn check_foundry() -> anyhow::Result<()> {
+    let output = Command::new("forge").arg("--version").output();
+    match output {
+        Ok(o) if o.status.success() => {
+            let version = String::from_utf8_lossy(&o.stdout);
+            println!("Foundry: {}", version.trim());
+            Ok(())
+        }
+        _ => anyhow::bail!(
+            "Foundry not found. Install it with: curl -L https://foundry.paradigm.xyz | bash"
+        ),
+    }
 }
 
-/// Placeholder for L2OutputOracle deployment.
-///
-/// In production, this will:
-/// 1. Compile and deploy the L2OutputOracle Solidity contract
-/// 2. Call initialize() with the starting block and submission interval
-/// 3. Transfer ownership to the owner key
-///
-/// For now, returns a deterministic address based on deployer + nonce.
-fn deploy_oracle_placeholder(args: &FastTrackArgs) -> anyhow::Result<Address> {
-    // Placeholder: deterministic address from first 20 bytes of keccak(deployer_key)
-    let key_bytes = hex::decode(
-        args.deployer_key
-            .strip_prefix("0x")
-            .unwrap_or(&args.deployer_key),
-    )?;
-    let hash = alloy_primitives::keccak256(&key_bytes);
-    Ok(Address::from_slice(&hash[..20]))
+/// Deploy contracts by running `forge script`.
+fn deploy_via_forge(args: &FastTrackArgs) -> anyhow::Result<String> {
+    let deployer_key_prefixed = if args.deployer_key.starts_with("0x") {
+        args.deployer_key.clone()
+    } else {
+        format!("0x{}", args.deployer_key)
+    };
+
+    let mut cmd = Command::new("forge");
+    cmd.current_dir("contracts")
+        .arg("script")
+        .arg("script/DeployDevnet.s.sol")
+        .arg("--rpc-url")
+        .arg(&args.l1_rpc_url)
+        .arg("--broadcast")
+        .env("DEPLOYER_PRIVATE_KEY", &deployer_key_prefixed)
+        .env(
+            "DEPLOY_DISPUTE_GAME",
+            if args.with_dispute_game {
+                "true"
+            } else {
+                "false"
+            },
+        )
+        .env("CHALLENGE_TIMEOUT", args.challenge_timeout.to_string());
+
+    println!("Running forge script...");
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow::anyhow!("failed to run forge: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !output.status.success() {
+        anyhow::bail!("forge script failed:\nstdout:\n{stdout}\nstderr:\n{stderr}");
+    }
+
+    // Print forge output for transparency
+    for line in stdout.lines() {
+        if line.contains("::") || line.contains("Deployed") || line.contains("0x") {
+            println!("  {line}");
+        }
+    }
+
+    Ok(stdout.to_string())
 }
 
-/// Placeholder for DisputeGame deployment.
-fn deploy_dispute_placeholder(args: &FastTrackArgs) -> anyhow::Result<Address> {
-    let key_bytes = hex::decode(args.owner_key.strip_prefix("0x").unwrap_or(&args.owner_key))?;
-    let hash = alloy_primitives::keccak256(&key_bytes);
-    Ok(Address::from_slice(&hash[..20]))
+/// Parse contract addresses from forge script output.
+fn parse_deployment_output(output: &str, args: &FastTrackArgs) -> anyhow::Result<DeploymentResult> {
+    let oracle_address = extract_address(output, "OpenZkL2OutputOracle").ok_or_else(|| {
+        anyhow::anyhow!("failed to find OpenZkL2OutputOracle address in forge output")
+    })?;
+
+    let dispute_game_address = if args.with_dispute_game {
+        Some(extract_address(output, "OpenZkDisputeGame").ok_or_else(|| {
+            anyhow::anyhow!("failed to find OpenZkDisputeGame address in forge output")
+        })?)
+    } else {
+        None
+    };
+
+    Ok(DeploymentResult {
+        oracle_address,
+        dispute_game_address,
+        _deployer: Address::ZERO,
+        starting_block: args.starting_block,
+    })
+}
+
+/// Extract an address from forge script output lines like:
+/// `OpenZkL2OutputOracle:     0x1234...`
+fn extract_address(output: &str, contract_name: &str) -> Option<Address> {
+    for line in output.lines() {
+        if line.contains(contract_name) {
+            // Find the 0x address in the line
+            if let Some(pos) = line.find("0x") {
+                let addr_str = &line[pos..];
+                // Take next 42 chars (0x + 40 hex)
+                let addr_candidate = if addr_str.len() >= 42 {
+                    &addr_str[..42]
+                } else {
+                    addr_str.trim()
+                };
+                if let Ok(addr) = addr_candidate.parse::<Address>() {
+                    return Some(addr);
+                }
+            }
+        }
+    }
+    None
 }

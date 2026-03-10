@@ -9,6 +9,12 @@ description = "CLI tool for open-zk SDK"
 name = "open-zk"
 path = "src/main.rs"
 
+[features]
+default = []
+kona = ["open-zk-host/kona"]
+sp1 = ["open-zk-host/sp1"]
+risc0 = ["open-zk-host/risc0"]
+
 [dependencies]
 open-zk = { workspace = true }
 open-zk-core = { workspace = true }
@@ -25,5 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
+alloy-rpc-types-eth = { workspace = true }
+alloy-sol-types = { workspace = true }
 url = { workspace = true }
 hex = "0.4"

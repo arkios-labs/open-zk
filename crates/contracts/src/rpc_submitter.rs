@@ -12,6 +12,7 @@ use crate::client::ProofSubmitter;
 pub struct RpcProofSubmitter {
     rpc_url: String,
     oracle_address: Address,
+    dispute_address: Option<Address>,
     private_key: String,
 }
 
@@ -21,6 +22,8 @@ pub enum RpcSubmitterError {
     ContractCall(String),
     #[error("unsupported backend: {0:?}")]
     UnsupportedBackend(ZkvmBackend),
+    #[error("dispute game address not configured")]
+    DisputeAddressNotConfigured,
 }
 
 impl RpcProofSubmitter {
@@ -28,8 +31,15 @@ impl RpcProofSubmitter {
         Self {
             rpc_url,
             oracle_address,
+            dispute_address: None,
             private_key,
         }
+    }
+
+    /// Set the DisputeGame contract address for dispute resolution.
+    pub fn with_dispute_address(mut self, address: Address) -> Self {
+        self.dispute_address = Some(address);
+        self
     }
 
     fn build_provider(&self) -> Result<impl alloy_provider::Provider + Clone, RpcSubmitterError> {
@@ -100,11 +110,40 @@ impl ProofSubmitter for RpcProofSubmitter {
 
     async fn resolve_dispute(
         &self,
-        _journal: &StateTransitionJournal,
-        _proof: &ProofArtifact,
+        journal: &StateTransitionJournal,
+        proof: &ProofArtifact,
     ) -> Result<B256, Self::Error> {
-        Err(RpcSubmitterError::ContractCall(
-            "dispute resolution not yet implemented".to_string(),
-        ))
+        let dispute_address = self
+            .dispute_address
+            .ok_or(RpcSubmitterError::DisputeAddressNotConfigured)?;
+
+        let provider = self.build_provider()?;
+        let dispute = crate::abi::IOpenZkDisputeGame::new(dispute_address, &provider);
+        let public_values = journal.to_abi_bytes();
+
+        let backend: u8 = match proof.backend {
+            ZkvmBackend::Sp1 => 0,
+            ZkvmBackend::RiscZero => 1,
+            other => return Err(RpcSubmitterError::UnsupportedBackend(other)),
+        };
+
+        let pending = dispute
+            .resolve(
+                journal.l2_block_number,
+                public_values.into(),
+                proof.proof_bytes.clone().into(),
+                backend,
+            )
+            .send()
+            .await
+            .map_err(|e| RpcSubmitterError::ContractCall(e.to_string()))?;
+
+        tracing::info!("dispute resolution submitted, waiting for confirmation...");
+        let receipt = pending
+            .get_receipt()
+            .await
+            .map_err(|e| RpcSubmitterError::ContractCall(e.to_string()))?;
+
+        Ok(receipt.transaction_hash)
     }
 }

@@ -14,6 +14,20 @@ pub struct MockMonitor {
     pub state: ChainState,
 }
 
+impl Default for MockMonitor {
+    fn default() -> Self {
+        Self {
+            state: ChainState {
+                l1_head: alloy_primitives::B256::ZERO,
+                l1_block_number: 0,
+                l2_proven_block: 0,
+                l2_safe_block: 0,
+                timestamp: std::time::SystemTime::now(),
+            },
+        }
+    }
+}
+
 #[async_trait]
 impl ChainMonitor for MockMonitor {
     type Error = MockMonitorError;
