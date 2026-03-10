@@ -160,7 +160,6 @@ jobs:
           key: risc0-elf-${{ hashFiles('guests/range-ethereum/src/**', 'guests/range-ethereum/risc0/**', 'guests/range-ethereum/Cargo.toml', 'crates/guest/**', 'build/risc0/**') }}
 
       - name: Install RISC Zero toolchain
-        if: steps.cache-risc0-elf.outputs.cache-hit != 'true'
         run: |
           curl -L https://risczero.com/install | bash
           ~/.risc0/bin/rzup install
@@ -173,6 +172,7 @@ jobs:
 
       - name: Pre-compile test binary
         run: |
+          export PATH="$HOME/.risc0/bin:$PATH"
           RISC0_DEV_MODE=1 cargo test -p open-zk-host \
             --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
             --release --no-run
@@ -211,6 +211,7 @@ jobs:
 
       - name: Run RISC Zero E2E
         run: |
+          export PATH="$HOME/.risc0/bin:$PATH"
           RISC0_DEV_MODE=1 cargo test -p open-zk-host \
             --features "rebuild-risc0-guest,kona" --test range_ethereum_e2e \
             --release -- --ignored --nocapture
