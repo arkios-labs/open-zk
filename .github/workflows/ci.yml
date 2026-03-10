@@ -120,19 +120,28 @@ jobs:
 
       - name: Wait for devnet
         run: |
+          echo "Waiting for L1 RPC..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:8545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
+          echo "Waiting for L2 RPC..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:9545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
-          echo "Waiting for OP Node to sync..."
-          timeout 240 bash -c 'until curl -s http://127.0.0.1:7545 \
+          echo "Waiting for L1 to produce blocks..."
+          timeout 300 bash -c 'until [ "$(curl -s http://127.0.0.1:8545 \
             -X POST -H "Content-Type: application/json" \
-            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_outputAtBlock\",\"params\":[\"0x1\"],\"id\":1}" \
-            2>/dev/null | grep -q outputRoot; do
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}" \
+            2>/dev/null | jq -r ".result // \"0x0\"")" != "0x0" ]; do
+            sleep 2; done'
+          echo "L1 producing blocks."
+          echo "Waiting for OP Node to sync..."
+          timeout 300 bash -c 'until curl -s http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_syncStatus\",\"params\":[],\"id\":1}" \
+            2>/dev/null | jq -e ".result.unsafe_l2.number > 0" >/dev/null 2>&1; do
             sleep 5; done'
           echo "OP Node synced."
 
@@ -209,19 +218,28 @@ jobs:
 
       - name: Wait for devnet
         run: |
+          echo "Waiting for L1 RPC..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:8545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
+          echo "Waiting for L2 RPC..."
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:9545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"; do
             sleep 2; done'
-          echo "Waiting for OP Node to sync..."
-          timeout 240 bash -c 'until curl -s http://127.0.0.1:7545 \
+          echo "Waiting for L1 to produce blocks..."
+          timeout 300 bash -c 'until [ "$(curl -s http://127.0.0.1:8545 \
             -X POST -H "Content-Type: application/json" \
-            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_outputAtBlock\",\"params\":[\"0x1\"],\"id\":1}" \
-            2>/dev/null | grep -q outputRoot; do
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}" \
+            2>/dev/null | jq -r ".result // \"0x0\"")" != "0x0" ]; do
+            sleep 2; done'
+          echo "L1 producing blocks."
+          echo "Waiting for OP Node to sync..."
+          timeout 300 bash -c 'until curl -s http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_syncStatus\",\"params\":[],\"id\":1}" \
+            2>/dev/null | jq -e ".result.unsafe_l2.number > 0" >/dev/null 2>&1; do
             sleep 5; done'
           echo "OP Node synced."
 
