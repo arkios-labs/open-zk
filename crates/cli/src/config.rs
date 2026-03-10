@@ -204,7 +204,10 @@ max_concurrent_proofs = 4
 
         let sdk_config = config.to_sdk_config().unwrap();
         let resolved = sdk_config.resolve();
-        assert_eq!(resolved.proof_mode, open_zk_core::types::ProofMode::Sentinel);
+        assert_eq!(
+            resolved.proof_mode,
+            open_zk_core::types::ProofMode::Sentinel
+        );
     }
 
     #[test]
