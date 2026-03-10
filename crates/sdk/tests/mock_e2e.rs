@@ -37,7 +37,6 @@ async fn test_full_pipeline_config_to_proof() {
     // Step 1: Build config and resolve intent
     let config = OpenZkConfig::builder()
         .target_finality(Duration::from_secs(600)) // 10 min → Beacon
-        .max_cost_per_proof(0.50)
         .security(SecurityLevel::Standard)
         .l1_rpc_url("http://localhost:8545")
         .l2_rpc_url("http://localhost:9545")
@@ -169,7 +168,6 @@ async fn test_no_pending_blocks_produces_no_requests() {
 async fn test_economy_config_resolves_sentinel() {
     let config = OpenZkConfig::builder()
         .target_finality(Duration::from_secs(3600))
-        .max_cost_per_proof(0.10)
         .security(SecurityLevel::Economy)
         .l1_rpc_url("http://localhost:8545")
         .l2_rpc_url("http://localhost:9545")
@@ -206,7 +204,6 @@ async fn test_full_pipeline_with_dispatcher_and_submitter() {
     // Step 1: Config
     let config = OpenZkConfig::builder()
         .target_finality(Duration::from_secs(600))
-        .max_cost_per_proof(0.50)
         .security(SecurityLevel::Standard)
         .l1_rpc_url("http://localhost:8545")
         .l2_rpc_url("http://localhost:9545")

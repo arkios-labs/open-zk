@@ -16,30 +16,38 @@ pub struct IntentResolver;
 impl IntentResolver {
     /// Resolve user-declared constraints into a concrete proving plan.
     ///
-    /// Rules:
-    /// - finality < 30min + budget ok → Beacon + SP1
-    /// - finality < 30min + budget tight → Beacon + RISC Zero
-    /// - finality > 1hr → Sentinel + cost-optimized
-    /// - security = Maximum → always Beacon
+    /// The `backend` parameter is the user's explicit choice:
+    /// - `Sp1` / `RiscZero` / `Mock` — use as-is.
+    /// - `Auto` — dynamically select based on `security` and `target_finality`.
+    ///   Currently a placeholder; will integrate backend pricing APIs in the future.
+    ///
+    /// Rules for `Auto` resolution:
+    /// - security = Maximum → Beacon + SP1
     /// - security = Economy → Sentinel + RISC Zero
+    /// - security = Standard + finality ≤ 30min → Beacon + SP1
+    /// - security = Standard + finality > 30min → Sentinel + RISC Zero
     pub fn resolve(
+        backend: ZkvmBackend,
         target_finality: Duration,
-        max_cost_per_proof: f64,
         security: SecurityLevel,
     ) -> ResolvedIntent {
-        let (proof_mode, backend) = match security {
-            SecurityLevel::Maximum => (ProofMode::Beacon, ZkvmBackend::Sp1),
-            SecurityLevel::Economy => (ProofMode::Sentinel, ZkvmBackend::RiscZero),
-            SecurityLevel::Standard => {
-                if target_finality <= Duration::from_secs(30 * 60) {
-                    if max_cost_per_proof >= 0.50 {
-                        (ProofMode::Beacon, ZkvmBackend::Sp1)
-                    } else {
-                        (ProofMode::Beacon, ZkvmBackend::RiscZero)
+        let (proof_mode, resolved_backend) = match backend {
+            ZkvmBackend::Auto => Self::resolve_auto(target_finality, security),
+            ZkvmBackend::Mock => (ProofMode::Beacon, ZkvmBackend::Mock),
+            explicit => {
+                // User chose a specific backend; derive proof_mode from security/finality.
+                let proof_mode = match security {
+                    SecurityLevel::Maximum => ProofMode::Beacon,
+                    SecurityLevel::Economy => ProofMode::Sentinel,
+                    SecurityLevel::Standard => {
+                        if target_finality <= Duration::from_secs(30 * 60) {
+                            ProofMode::Beacon
+                        } else {
+                            ProofMode::Sentinel
+                        }
                     }
-                } else {
-                    (ProofMode::Sentinel, ZkvmBackend::RiscZero)
-                }
+                };
+                (proof_mode, explicit)
             }
         };
 
@@ -51,9 +59,29 @@ impl IntentResolver {
 
         ResolvedIntent {
             proof_mode,
-            backend,
+            backend: resolved_backend,
             proving_mode: ProvingMode::Groth16,
             aggregation_window,
+        }
+    }
+
+    /// Auto-select backend based on security level and target finality.
+    ///
+    /// Future: integrate with backend pricing APIs for real cost optimization.
+    fn resolve_auto(
+        target_finality: Duration,
+        security: SecurityLevel,
+    ) -> (ProofMode, ZkvmBackend) {
+        match security {
+            SecurityLevel::Maximum => (ProofMode::Beacon, ZkvmBackend::Sp1),
+            SecurityLevel::Economy => (ProofMode::Sentinel, ZkvmBackend::RiscZero),
+            SecurityLevel::Standard => {
+                if target_finality <= Duration::from_secs(30 * 60) {
+                    (ProofMode::Beacon, ZkvmBackend::Sp1)
+                } else {
+                    (ProofMode::Sentinel, ZkvmBackend::RiscZero)
+                }
+            }
         }
     }
 }
@@ -63,27 +91,57 @@ mod tests {
     use super::*;
 
     #[test]
-    fn max_security_always_beacon_sp1() {
-        let result =
-            IntentResolver::resolve(Duration::from_secs(3600), 0.10, SecurityLevel::Maximum);
+    fn explicit_sp1_beacon() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Sp1,
+            Duration::from_secs(600),
+            SecurityLevel::Standard,
+        );
+        assert_eq!(result.backend, ZkvmBackend::Sp1);
+        assert_eq!(result.proof_mode, ProofMode::Beacon);
+        assert_eq!(result.aggregation_window, 100);
+    }
+
+    #[test]
+    fn explicit_risc0_sentinel() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::RiscZero,
+            Duration::from_secs(7200),
+            SecurityLevel::Standard,
+        );
+        assert_eq!(result.backend, ZkvmBackend::RiscZero);
+        assert_eq!(result.proof_mode, ProofMode::Sentinel);
+    }
+
+    #[test]
+    fn auto_max_security_beacon_sp1() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Auto,
+            Duration::from_secs(3600),
+            SecurityLevel::Maximum,
+        );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
         assert_eq!(result.backend, ZkvmBackend::Sp1);
         assert_eq!(result.aggregation_window, 10);
     }
 
     #[test]
-    fn economy_always_sentinel_risc0() {
-        let result = IntentResolver::resolve(Duration::from_secs(60), 10.0, SecurityLevel::Economy);
+    fn auto_economy_sentinel_risc0() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Auto,
+            Duration::from_secs(60),
+            SecurityLevel::Economy,
+        );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
         assert_eq!(result.backend, ZkvmBackend::RiscZero);
         assert_eq!(result.aggregation_window, 1000);
     }
 
     #[test]
-    fn standard_fast_finality_high_budget_beacon_sp1() {
+    fn auto_standard_fast_finality_beacon_sp1() {
         let result = IntentResolver::resolve(
-            Duration::from_secs(600), // 10 min
-            0.50,
+            ZkvmBackend::Auto,
+            Duration::from_secs(600),
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Beacon);
@@ -92,24 +150,24 @@ mod tests {
     }
 
     #[test]
-    fn standard_fast_finality_low_budget_beacon_risc0() {
+    fn auto_standard_slow_finality_sentinel_risc0() {
         let result = IntentResolver::resolve(
-            Duration::from_secs(600), // 10 min
-            0.10,
-            SecurityLevel::Standard,
-        );
-        assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkvmBackend::RiscZero);
-    }
-
-    #[test]
-    fn standard_slow_finality_sentinel() {
-        let result = IntentResolver::resolve(
-            Duration::from_secs(7200), // 2 hours
-            1.0,
+            ZkvmBackend::Auto,
+            Duration::from_secs(7200),
             SecurityLevel::Standard,
         );
         assert_eq!(result.proof_mode, ProofMode::Sentinel);
         assert_eq!(result.backend, ZkvmBackend::RiscZero);
+    }
+
+    #[test]
+    fn mock_backend_always_beacon() {
+        let result = IntentResolver::resolve(
+            ZkvmBackend::Mock,
+            Duration::from_secs(7200),
+            SecurityLevel::Economy,
+        );
+        assert_eq!(result.backend, ZkvmBackend::Mock);
+        assert_eq!(result.proof_mode, ProofMode::Beacon);
     }
 }

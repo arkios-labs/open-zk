@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 pub enum ZkvmBackend {
     Sp1,
     RiscZero,
+    /// Dynamically select the optimal backend based on cost, latency, and
+    /// availability. Reserved for future implementation — currently resolves
+    /// to SP1 as the default.
+    Auto,
     Mock,
 }
 

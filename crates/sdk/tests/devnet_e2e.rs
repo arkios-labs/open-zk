@@ -125,7 +125,6 @@ async fn test_devnet_full_pipeline_mock_proof() {
     // Step 2: Build config
     let config = OpenZkConfig::builder()
         .target_finality(Duration::from_secs(600))
-        .max_cost_per_proof(0.50)
         .security(SecurityLevel::Standard)
         .l1_rpc_url(L1_RPC)
         .l2_rpc_url(L2_RPC)

@@ -1,12 +1,12 @@
-use open_zk_core::types::SecurityLevel;
+use open_zk_core::types::{SecurityLevel, ZkvmBackend};
 use open_zk_orchestrator::IntentResolver;
 use std::time::Duration;
 
 /// Top-level SDK configuration built from user intent.
 #[derive(Debug, Clone)]
 pub struct OpenZkConfig {
+    pub backend: ZkvmBackend,
     pub target_finality: Duration,
-    pub max_cost_per_proof: f64,
     pub security: SecurityLevel,
     pub l1_rpc_url: String,
     pub l2_rpc_url: String,
@@ -20,15 +20,15 @@ impl OpenZkConfig {
 
     /// Resolve this config into concrete proving parameters.
     pub fn resolve(&self) -> open_zk_orchestrator::ResolvedIntent {
-        IntentResolver::resolve(self.target_finality, self.max_cost_per_proof, self.security)
+        IntentResolver::resolve(self.backend, self.target_finality, self.security)
     }
 }
 
 /// Builder for constructing an `OpenZkConfig`.
 #[derive(Debug, Default)]
 pub struct OpenZkConfigBuilder {
+    backend: Option<ZkvmBackend>,
     target_finality: Option<Duration>,
-    max_cost_per_proof: Option<f64>,
     security: Option<SecurityLevel>,
     l1_rpc_url: Option<String>,
     l2_rpc_url: Option<String>,
@@ -42,13 +42,13 @@ pub enum ConfigError {
 }
 
 impl OpenZkConfigBuilder {
-    pub fn target_finality(mut self, d: Duration) -> Self {
-        self.target_finality = Some(d);
+    pub fn backend(mut self, backend: ZkvmBackend) -> Self {
+        self.backend = Some(backend);
         self
     }
 
-    pub fn max_cost_per_proof(mut self, cost: f64) -> Self {
-        self.max_cost_per_proof = Some(cost);
+    pub fn target_finality(mut self, d: Duration) -> Self {
+        self.target_finality = Some(d);
         self
     }
 
@@ -74,8 +74,8 @@ impl OpenZkConfigBuilder {
 
     pub fn build(self) -> Result<OpenZkConfig, ConfigError> {
         Ok(OpenZkConfig {
+            backend: self.backend.unwrap_or(ZkvmBackend::Auto),
             target_finality: self.target_finality.unwrap_or(Duration::from_secs(30 * 60)),
-            max_cost_per_proof: self.max_cost_per_proof.unwrap_or(1.0),
             security: self.security.unwrap_or(SecurityLevel::Standard),
             l1_rpc_url: self
                 .l1_rpc_url
@@ -96,10 +96,27 @@ mod tests {
     use open_zk_core::types::{ProofMode, ZkvmBackend};
 
     #[test]
-    fn build_config_and_resolve() {
+    fn build_config_auto_backend() {
         let config = OpenZkConfig::builder()
             .target_finality(Duration::from_secs(600))
-            .max_cost_per_proof(0.50)
+            .security(SecurityLevel::Standard)
+            .l1_rpc_url("http://localhost:8545")
+            .l2_rpc_url("http://localhost:9545")
+            .l1_beacon_url("http://localhost:5052")
+            .build()
+            .unwrap();
+
+        assert_eq!(config.backend, ZkvmBackend::Auto);
+        let resolved = config.resolve();
+        assert_eq!(resolved.proof_mode, ProofMode::Beacon);
+        assert_eq!(resolved.backend, ZkvmBackend::Sp1);
+    }
+
+    #[test]
+    fn build_config_explicit_sp1() {
+        let config = OpenZkConfig::builder()
+            .backend(ZkvmBackend::Sp1)
+            .target_finality(Duration::from_secs(600))
             .security(SecurityLevel::Standard)
             .l1_rpc_url("http://localhost:8545")
             .l2_rpc_url("http://localhost:9545")
@@ -108,7 +125,6 @@ mod tests {
             .unwrap();
 
         let resolved = config.resolve();
-        assert_eq!(resolved.proof_mode, ProofMode::Beacon);
         assert_eq!(resolved.backend, ZkvmBackend::Sp1);
     }
 

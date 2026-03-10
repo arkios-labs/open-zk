@@ -61,11 +61,10 @@ l2_rpc_url = "https://your-rollup.rpc.endpoint"
 l1_beacon_url = "https://your-beacon-node:5052"
 
 [proving]
-backend = "sp1"                 # "sp1" | "risc0" | "mock"
+backend = "auto"                # "auto" | "sp1" | "risc0" | "mock"
 mode = "beacon"                 # "beacon" (validity) | "sentinel" (fault proof)
 security = "standard"           # "maximum" | "standard" | "economy"
 target_finality_secs = 1800     # Target finality time in seconds
-max_cost_per_proof = 1.0        # Max cost per proof in USD
 max_concurrent_proofs = 4       # Parallel proof jobs
 ```
 
@@ -73,22 +72,22 @@ max_concurrent_proofs = 4       # Parallel proof jobs
 
 | Field | Values | Default | Description |
 |-------|--------|---------|-------------|
-| `backend` | `sp1`, `risc0`, `mock` | `sp1` | zkVM backend to use |
+| `backend` | `auto`, `sp1`, `risc0`, `mock` | `auto` | zkVM backend (`auto` selects dynamically) |
 | `mode` | `beacon`, `sentinel` | `beacon` | Proof mode (validity vs fault proof) |
 | `security` | `maximum`, `standard`, `economy` | `standard` | Security / cost trade-off level |
 | `target_finality_secs` | seconds | `1800` | Target finality time |
-| `max_cost_per_proof` | USD | `1.0` | Cost constraint per proof |
 | `max_concurrent_proofs` | integer | `4` | Max parallel proof generation jobs |
 
-**How the Intent Resolver maps your config to concrete parameters:**
+**How the Intent Resolver maps your config to concrete parameters (when `backend = "auto"`):**
 
 | Security | Proof Mode | Backend | Aggregation Window |
 |----------|------------|---------|-------------------|
 | `maximum` | Beacon (always) | SP1 | 10 blocks |
-| `standard` + finality ≤ 30min + budget ≥ $0.50 | Beacon | SP1 | 100 blocks |
-| `standard` + finality ≤ 30min + budget < $0.50 | Beacon | RISC Zero | 100 blocks |
-| `standard` + finality > 1hr | Sentinel | RISC Zero | 100 blocks |
+| `standard` + finality ≤ 30min | Beacon | SP1 | 100 blocks |
+| `standard` + finality > 30min | Sentinel | RISC Zero | 100 blocks |
 | `economy` | Sentinel (always) | RISC Zero | 1000 blocks |
+
+> When `backend` is set to `sp1`, `risc0`, or `mock`, the chosen backend is used directly. The proof mode (Beacon/Sentinel) is still derived from `security` and `target_finality_secs`. Future versions will integrate backend pricing APIs for smarter `auto` selection.
 
 #### 3. Deploy On-Chain Contracts
 

@@ -13,11 +13,10 @@ use std::path::Path;
 /// l1_beacon_url = "http://localhost:5052"
 ///
 /// [proving]
-/// backend = "sp1"
+/// backend = "auto"
 /// mode = "beacon"
 /// security = "standard"
 /// target_finality_secs = 1800
-/// max_cost_per_proof = 1.0
 /// max_concurrent_proofs = 4
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,14 +49,12 @@ pub struct ProvingConfig {
     pub security: String,
     #[serde(default = "default_target_finality")]
     pub target_finality_secs: u64,
-    #[serde(default = "default_max_cost")]
-    pub max_cost_per_proof: f64,
     #[serde(default = "default_max_concurrent")]
     pub max_concurrent_proofs: usize,
 }
 
 fn default_backend() -> String {
-    "sp1".to_string()
+    "auto".to_string()
 }
 fn default_mode() -> String {
     "beacon".to_string()
@@ -67,9 +64,6 @@ fn default_security() -> String {
 }
 fn default_target_finality() -> u64 {
     1800
-}
-fn default_max_cost() -> f64 {
-    1.0
 }
 fn default_max_concurrent() -> usize {
     4
@@ -82,7 +76,6 @@ impl Default for ProvingConfig {
             mode: default_mode(),
             security: default_security(),
             target_finality_secs: default_target_finality(),
-            max_cost_per_proof: default_max_cost(),
             max_concurrent_proofs: default_max_concurrent(),
         }
     }
@@ -104,11 +97,18 @@ impl CliConfig {
             _ => open_zk_core::types::SecurityLevel::Standard,
         };
 
+        let backend = match self.proving.backend.as_str() {
+            "sp1" => open_zk_core::types::ZkvmBackend::Sp1,
+            "risc0" => open_zk_core::types::ZkvmBackend::RiscZero,
+            "mock" => open_zk_core::types::ZkvmBackend::Mock,
+            _ => open_zk_core::types::ZkvmBackend::Auto,
+        };
+
         open_zk::OpenZkConfig::builder()
+            .backend(backend)
             .target_finality(std::time::Duration::from_secs(
                 self.proving.target_finality_secs,
             ))
-            .max_cost_per_proof(self.proving.max_cost_per_proof)
             .security(security)
             .l1_rpc_url(&self.network.l1_rpc_url)
             .l2_rpc_url(&self.network.l2_rpc_url)
@@ -162,7 +162,6 @@ backend = "sp1"
 mode = "beacon"
 security = "standard"
 target_finality_secs = 1800
-max_cost_per_proof = 1.0
 max_concurrent_proofs = 4
 "#;
         let config: CliConfig = toml::from_str(toml_str).unwrap();
@@ -193,7 +192,7 @@ max_concurrent_proofs = 4
     fn default_toml_roundtrip() {
         let toml_str = CliConfig::default_toml();
         let parsed: CliConfig = toml::from_str(&toml_str).unwrap();
-        assert_eq!(parsed.proving.backend, "sp1");
+        assert_eq!(parsed.proving.backend, "auto");
     }
 
     #[test]
