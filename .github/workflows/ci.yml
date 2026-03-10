@@ -138,6 +138,16 @@ jobs:
             sleep 2; done'
           echo "L1 producing blocks."
           echo "Waiting for OP Node to sync..."
+          echo "--- Docker containers ---"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
+          echo "--- OP Node container logs (last 20 lines) ---"
+          docker logs ops-bedrock-op-node-1 --tail 20 2>&1 || true
+          echo "--- Attempting OP Node RPC ---"
+          curl -sv http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"optimism_syncStatus","params":[],"id":1}' \
+            2>&1 || true
+          echo "---"
           timeout 300 bash -c 'until curl -s http://127.0.0.1:7545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_syncStatus\",\"params\":[],\"id\":1}" \
@@ -236,6 +246,16 @@ jobs:
             sleep 2; done'
           echo "L1 producing blocks."
           echo "Waiting for OP Node to sync..."
+          echo "--- Docker containers ---"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
+          echo "--- OP Node container logs (last 20 lines) ---"
+          docker logs ops-bedrock-op-node-1 --tail 20 2>&1 || true
+          echo "--- Attempting OP Node RPC ---"
+          curl -sv http://127.0.0.1:7545 \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"optimism_syncStatus","params":[],"id":1}' \
+            2>&1 || true
+          echo "---"
           timeout 300 bash -c 'until curl -s http://127.0.0.1:7545 \
             -X POST -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"method\":\"optimism_syncStatus\",\"params\":[],\"id\":1}" \
