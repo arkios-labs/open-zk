@@ -93,7 +93,7 @@ max_concurrent_proofs = 4       # Parallel proof jobs
 #### 3. Deploy On-Chain Contracts
 
 ```bash
-# Beacon mode — deploy L2OutputOracle + ProofVerifier
+# Beacon mode — deploy L2OutputOracle + mock verifiers
 open-zk fast-track \
   --deployer-key <PRIVATE_KEY> \
   --owner-key <OWNER_KEY> \
@@ -166,7 +166,7 @@ graph TD
   subgraph Contracts["On-Chain"]
     Oracle["L2OutputOracle"]
     Dispute["DisputeGame"]
-    Verifier["ProofVerifier"]
+    Verifier["SP1Verifier / RiscZeroVerifier<br>(vendor-operated)"]
   end
 
   subgraph Host["Host (Native)"]
@@ -234,7 +234,7 @@ graph LR
 | `open-zk-guest` | `crates/guest` | Guest-side I/O abstraction for zkVM programs |
 | `open-zk-host` | `crates/host` | Host prover backends and witness generation |
 | `open-zk-orchestrator` | `crates/orchestrator` | Orchestration engine (Beacon / Sentinel loops) |
-| `open-zk-contracts` | `crates/contracts` | On-chain contract ABIs (Verifier, Oracle, DisputeGame) |
+| `open-zk-contracts` | `crates/contracts` | On-chain contract ABIs (Oracle, DisputeGame) |
 | `open-zk-cli` | `crates/cli` | CLI tool (`prove`, `serve`, `fast-track`, etc.) |
 | `open-zk-build-risc0` | `build/risc0` | RISC Zero guest ELF builder |
 
@@ -308,7 +308,7 @@ sequenceDiagram
     User->>L1: resolve() → DisputeGame
   end
 
-  L1->>L1: verifyProof() via ProofVerifier
+  L1->>L1: verify via SP1Verifier / RiscZeroVerifier
 ```
 
 1. The **host** receives a `ProofRequest` specifying an L2 block range to prove
@@ -327,7 +327,7 @@ sequenceDiagram
 | `PreimageStore` | rkyv-backed preimage oracle serving kona's derivation pipeline in the guest |
 | `ProvingMode` | `Execute` (no proof), `Compressed`, `Groth16` (on-chain verifiable) |
 | `ProofMode` | `Beacon` (validity proofs) or `Sentinel` (ZK-backed fault proofs) |
-| `StateTransitionJournal` | Guest output: `l1_head`, `l2_pre_root`, `l2_post_root`, `l2_block_number` |
+| `StateTransitionJournal` | Guest output: `l1_head`, `l2_pre_root`, `l2_post_root`, `l2_block_number`, `rollup_config_hash`, `program_id` |
 | `ChainMonitor` | Polls L1/L2 state, detects unproven ranges and active disputes |
 | `DisputeGame` | On-chain contract: `challenge()` to dispute, `resolve()` with ZK proof |
 
