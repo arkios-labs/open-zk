@@ -127,8 +127,8 @@ mod tests {
             vec![ZkvmBackend::Sp1, ZkvmBackend::RiscZero]
         );
         let resolved = config.resolve();
-        assert_eq!(resolved.proof_mode, ProofMode::Beacon);
-        // Auto picks first from allowed_backends
+        // Standard defaults to Sentinel
+        assert_eq!(resolved.proof_mode, ProofMode::Sentinel);
         assert_eq!(resolved.backend, ZkvmBackend::Sp1);
     }
 

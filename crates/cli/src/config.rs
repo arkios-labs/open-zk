@@ -15,7 +15,7 @@ use std::path::Path;
 /// [proving]
 /// backend = "auto"
 /// allowed_backends = ["sp1", "risc0"]
-/// mode = "beacon"
+/// mode = "sentinel"
 /// security = "standard"
 /// target_finality_secs = 1800
 /// max_concurrent_proofs = 4
@@ -63,7 +63,7 @@ fn default_allowed_backends() -> Vec<String> {
     vec!["sp1".to_string(), "risc0".to_string()]
 }
 fn default_mode() -> String {
-    "beacon".to_string()
+    "sentinel".to_string()
 }
 fn default_security() -> String {
     "standard".to_string()
@@ -204,7 +204,7 @@ max_concurrent_proofs = 4
 
         let sdk_config = config.to_sdk_config().unwrap();
         let resolved = sdk_config.resolve();
-        assert_eq!(resolved.proof_mode, open_zk_core::types::ProofMode::Beacon);
+        assert_eq!(resolved.proof_mode, open_zk_core::types::ProofMode::Sentinel);
     }
 
     #[test]

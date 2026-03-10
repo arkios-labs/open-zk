@@ -45,7 +45,7 @@ async fn test_full_pipeline_config_to_proof() {
         .unwrap();
 
     let intent = config.resolve();
-    assert_eq!(intent.proof_mode, ProofMode::Beacon);
+    assert_eq!(intent.proof_mode, ProofMode::Sentinel);
     assert_eq!(intent.backend, ZkvmBackend::Sp1);
     assert_eq!(intent.aggregation_window, 100);
 

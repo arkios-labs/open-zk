@@ -55,18 +55,15 @@ impl IntentResolver {
         }
     }
 
-    /// Derive proof mode from security level and target finality.
-    fn resolve_proof_mode(target_finality: Duration, security: SecurityLevel) -> ProofMode {
+    /// Derive proof mode from security level.
+    ///
+    /// Only `Maximum` uses Beacon (validity proofs for every submission).
+    /// `Standard` and `Economy` default to Sentinel (ZK-backed fault proofs),
+    /// which is significantly cheaper while maintaining ZK-grade security.
+    fn resolve_proof_mode(_target_finality: Duration, security: SecurityLevel) -> ProofMode {
         match security {
             SecurityLevel::Maximum => ProofMode::Beacon,
-            SecurityLevel::Economy => ProofMode::Sentinel,
-            SecurityLevel::Standard => {
-                if target_finality <= Duration::from_secs(30 * 60) {
-                    ProofMode::Beacon
-                } else {
-                    ProofMode::Sentinel
-                }
-            }
+            _ => ProofMode::Sentinel,
         }
     }
 
@@ -87,7 +84,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn explicit_sp1_beacon() {
+    fn explicit_sp1_standard_sentinel() {
         let result = IntentResolver::resolve(
             ZkvmBackend::Sp1,
             &[],
@@ -95,7 +92,7 @@ mod tests {
             SecurityLevel::Standard,
         );
         assert_eq!(result.backend, ZkvmBackend::Sp1);
-        assert_eq!(result.proof_mode, ProofMode::Beacon);
+        assert_eq!(result.proof_mode, ProofMode::Sentinel);
         assert_eq!(result.aggregation_window, 100);
     }
 
@@ -158,28 +155,18 @@ mod tests {
     }
 
     #[test]
-    fn standard_fast_finality_beacon() {
-        let result = IntentResolver::resolve(
-            ZkvmBackend::Auto,
-            IntentResolver::DEFAULT_ALLOWED_BACKENDS,
-            Duration::from_secs(600),
-            SecurityLevel::Standard,
-        );
-        assert_eq!(result.proof_mode, ProofMode::Beacon);
-        assert_eq!(result.backend, ZkvmBackend::Sp1);
-        assert_eq!(result.aggregation_window, 100);
-    }
-
-    #[test]
-    fn standard_slow_finality_sentinel() {
-        let result = IntentResolver::resolve(
-            ZkvmBackend::Auto,
-            IntentResolver::DEFAULT_ALLOWED_BACKENDS,
-            Duration::from_secs(7200),
-            SecurityLevel::Standard,
-        );
-        assert_eq!(result.proof_mode, ProofMode::Sentinel);
-        assert_eq!(result.backend, ZkvmBackend::Sp1);
+    fn standard_always_sentinel() {
+        // Standard uses Sentinel regardless of finality target
+        for secs in [600, 1800, 7200] {
+            let result = IntentResolver::resolve(
+                ZkvmBackend::Auto,
+                IntentResolver::DEFAULT_ALLOWED_BACKENDS,
+                Duration::from_secs(secs),
+                SecurityLevel::Standard,
+            );
+            assert_eq!(result.proof_mode, ProofMode::Sentinel);
+            assert_eq!(result.aggregation_window, 100);
+        }
     }
 
     #[test]
