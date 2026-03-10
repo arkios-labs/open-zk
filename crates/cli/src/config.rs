@@ -15,7 +15,6 @@ use std::path::Path;
 /// [proving]
 /// backend = "auto"
 /// allowed_backends = ["sp1", "risc0"]
-/// mode = "sentinel"
 /// security = "standard"
 /// target_finality_secs = 1800
 /// max_concurrent_proofs = 4
@@ -46,8 +45,6 @@ pub struct ProvingConfig {
     pub backend: String,
     #[serde(default = "default_allowed_backends")]
     pub allowed_backends: Vec<String>,
-    #[serde(default = "default_mode")]
-    pub mode: String,
     #[serde(default = "default_security")]
     pub security: String,
     #[serde(default = "default_target_finality")]
@@ -61,9 +58,6 @@ fn default_backend() -> String {
 }
 fn default_allowed_backends() -> Vec<String> {
     vec!["sp1".to_string(), "risc0".to_string()]
-}
-fn default_mode() -> String {
-    "sentinel".to_string()
 }
 fn default_security() -> String {
     "standard".to_string()
@@ -80,7 +74,6 @@ impl Default for ProvingConfig {
         Self {
             backend: default_backend(),
             allowed_backends: default_allowed_backends(),
-            mode: default_mode(),
             security: default_security(),
             target_finality_secs: default_target_finality(),
             max_concurrent_proofs: default_max_concurrent(),
@@ -178,7 +171,6 @@ l1_beacon_url = "http://localhost:5052"
 
 [proving]
 backend = "sp1"
-mode = "beacon"
 security = "standard"
 target_finality_secs = 1800
 max_concurrent_proofs = 4

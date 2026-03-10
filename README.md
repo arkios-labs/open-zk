@@ -63,7 +63,6 @@ l1_beacon_url = "https://your-beacon-node:5052"
 [proving]
 backend = "auto"                # "auto" | "sp1" | "risc0" | "mock"
 allowed_backends = ["sp1", "risc0"]  # Vendor allowlist for "auto" mode
-mode = "sentinel"               # "beacon" (validity) | "sentinel" (fault proof)
 security = "standard"           # "maximum" | "standard" | "economy"
 target_finality_secs = 1800     # Target finality time in seconds
 max_concurrent_proofs = 4       # Parallel proof jobs
@@ -75,7 +74,6 @@ max_concurrent_proofs = 4       # Parallel proof jobs
 |-------|--------|---------|-------------|
 | `backend` | `auto`, `sp1`, `risc0`, `mock` | `auto` | zkVM backend (`auto` picks from allowlist) |
 | `allowed_backends` | list of `sp1`, `risc0` | `["sp1", "risc0"]` | Vendor allowlist for `auto` mode |
-| `mode` | `beacon`, `sentinel` | `sentinel` | Proof mode (validity vs fault proof) |
 | `security` | `maximum`, `standard`, `economy` | `standard` | Proof mode + aggregation frequency |
 | `target_finality_secs` | seconds | `1800` | Target finality time |
 | `max_concurrent_proofs` | integer | `4` | Max parallel proof generation jobs |
