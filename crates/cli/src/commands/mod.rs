@@ -4,3 +4,5 @@ pub mod init;
 pub mod prove;
 pub mod serve;
 pub mod status;
+#[cfg(feature = "kona")]
+mod witness_helper;
