@@ -30,11 +30,14 @@ pub struct SuccinctPricing {
 impl SuccinctPricing {
     /// Create from `NETWORK_PRIVATE_KEY` env var.
     pub fn from_env(prove_usd: f64) -> Result<Self, SuccinctPricingError> {
-        let private_key = std::env::var("NETWORK_PRIVATE_KEY").map_err(|_| {
-            SuccinctPricingError::Config(
-                "NETWORK_PRIVATE_KEY env var required for Succinct pricing".to_string(),
-            )
-        })?;
+        let private_key = std::env::var("NETWORK_PRIVATE_KEY")
+            .or_else(|_| std::env::var("SP1_PRIVATE_KEY"))
+            .map_err(|_| {
+                SuccinctPricingError::Config(
+                    "NETWORK_PRIVATE_KEY or SP1_PRIVATE_KEY env var required for Succinct pricing"
+                        .to_string(),
+                )
+            })?;
         let signer = NetworkSigner::local(&private_key)
             .map_err(|e| SuccinctPricingError::Config(format!("invalid private key: {e}")))?;
         let client = NetworkClient::new(
@@ -76,24 +79,31 @@ impl SuccinctPricing {
             .await
             .map_err(|e| SuccinctPricingError::Grpc(e.to_string()))?;
 
-        let requests = match response {
-            GetFilteredProofRequestsResponse::Auction(r) => r.requests,
-            GetFilteredProofRequestsResponse::Base(r) => r.requests,
+        // Extract (deduction_amount, cycles) pairs from either Auction or Base response.
+        let pairs: Vec<(String, u64)> = match response {
+            GetFilteredProofRequestsResponse::Auction(r) => r
+                .requests
+                .into_iter()
+                .filter_map(|req| Some((req.deduction_amount?, req.cycles?)))
+                .collect(),
+            GetFilteredProofRequestsResponse::Base(r) => r
+                .requests
+                .into_iter()
+                .filter_map(|req| Some((req.deduction_amount?, req.cycles?)))
+                .collect(),
         };
 
-        // Extract price_per_cycle from requests that have both deduction_amount and cycles.
-        let mut prices_per_cycle: Vec<f64> = requests
+        // Compute price_per_cycle for each fulfilled request.
+        let mut prices_per_cycle: Vec<f64> = pairs
             .iter()
-            .filter_map(|req| {
-                let deduction_str = req.deduction_amount.as_ref()?;
+            .filter_map(|(deduction_str, cycles)| {
                 let deduction: u128 = deduction_str.parse().ok()?;
-                let cycles = req.cycles?;
-                if cycles == 0 {
+                if *cycles == 0 {
                     return None;
                 }
                 // deduction is in PROVE wei (18 decimals), convert to PROVE
                 let deduction_prove = deduction as f64 / 1e18;
-                Some(deduction_prove / cycles as f64)
+                Some(deduction_prove / *cycles as f64)
             })
             .collect();
 
@@ -102,7 +112,8 @@ impl SuccinctPricing {
         }
 
         // Median
-        prices_per_cycle.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        prices_per_cycle
+            .sort_by(|a: &f64, b: &f64| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median = if prices_per_cycle.len() % 2 == 0 {
             let mid = prices_per_cycle.len() / 2;
             (prices_per_cycle[mid - 1] + prices_per_cycle[mid]) / 2.0
@@ -173,11 +184,11 @@ mod tests {
     #[test]
     fn median_calculation() {
         // Simulate price_per_cycle values
-        let mut prices = vec![1e-15, 3e-15, 2e-15, 5e-15, 4e-15];
+        let mut prices: Vec<f64> = vec![1e-15, 3e-15, 2e-15, 5e-15, 4e-15];
         prices.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         // sorted: [1e-15, 2e-15, 3e-15, 4e-15, 5e-15]
         let median = prices[prices.len() / 2]; // 3e-15
-        assert!((median - 3e-15).abs() < 1e-20);
+        assert!((median - 3e-15).abs() < 1e-20_f64);
     }
 
     #[test]
