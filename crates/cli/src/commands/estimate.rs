@@ -2,7 +2,9 @@
 
 use crate::config::CliConfig;
 use clap::Args;
-use open_zk_core::traits::ProverBackend;
+use open_zk_core::traits::{PricingProvider, ProverBackend};
+use open_zk_core::types::{CostEstimate, CycleEstimate, PricingInfo, ZkvmBackend};
+use open_zk_host::pricing::{BoundlessPricing, FixedPricing, Percentile};
 use open_zk_host::prover::{MockProgram, MockProverBackend, MockWitness};
 use std::path::PathBuf;
 use tracing::info;
@@ -20,6 +22,81 @@ pub struct EstimateArgs {
     /// Path to config file. Defaults to `open-zk.toml`.
     #[arg(long, short, default_value = "open-zk.toml")]
     pub config: PathBuf,
+
+    /// Pricing provider: "auto", "fixed", "boundless", or "succinct".
+    /// Auto selects boundless for risc0, succinct for sp1, fixed for others.
+    #[arg(long)]
+    pub pricing: Option<String>,
+}
+
+/// Enum dispatch for pricing providers (avoids trait object complexity).
+enum DynPricing {
+    Fixed(FixedPricing),
+    Boundless(BoundlessPricing),
+    #[cfg(feature = "sp1")]
+    Succinct(open_zk_host::pricing::SuccinctPricing),
+}
+
+impl DynPricing {
+    async fn price(&self, estimate: &CycleEstimate) -> anyhow::Result<PricingInfo> {
+        match self {
+            Self::Fixed(p) => p.price(estimate).await.map_err(Into::into),
+            Self::Boundless(p) => p.price(estimate).await.map_err(Into::into),
+            #[cfg(feature = "sp1")]
+            Self::Succinct(p) => p.price(estimate).await.map_err(Into::into),
+        }
+    }
+}
+
+async fn resolve_boundless(config: &CliConfig) -> DynPricing {
+    let percentile = Percentile::parse(&config.pricing.boundless_percentile).unwrap_or_default();
+    let eth_usd = open_zk_host::pricing::fetch_eth_usd(config.pricing.eth_usd_price).await;
+    DynPricing::Boundless(BoundlessPricing::with_options(
+        "https://d2mdvlnmyov1e1.cloudfront.net",
+        percentile,
+        eth_usd,
+    ))
+}
+
+#[cfg(feature = "sp1")]
+async fn resolve_succinct(config: &CliConfig) -> anyhow::Result<DynPricing> {
+    let prove_usd = open_zk_host::pricing::fetch_prove_usd(config.pricing.prove_usd_price).await;
+    let pricing = open_zk_host::pricing::SuccinctPricing::from_env(prove_usd)?;
+    Ok(DynPricing::Succinct(pricing))
+}
+
+async fn resolve_pricing(
+    config: &CliConfig,
+    pricing_arg: Option<&str>,
+    backend: ZkvmBackend,
+) -> anyhow::Result<DynPricing> {
+    let provider = pricing_arg.unwrap_or(config.pricing.provider.as_str());
+
+    match provider {
+        "boundless" => Ok(resolve_boundless(config).await),
+        "succinct" => {
+            #[cfg(feature = "sp1")]
+            {
+                resolve_succinct(config).await
+            }
+            #[cfg(not(feature = "sp1"))]
+            anyhow::bail!(
+                "succinct pricing requires the `sp1` feature — compile with: \
+                 cargo build --bin open-zk --features sp1"
+            )
+        }
+        "fixed" => Ok(DynPricing::Fixed(FixedPricing::default())),
+        // "auto": boundless for RiscZero, succinct for Sp1, fixed for others
+        _ => match backend {
+            ZkvmBackend::RiscZero => Ok(resolve_boundless(config).await),
+            #[cfg(feature = "sp1")]
+            ZkvmBackend::Sp1 => resolve_succinct(config).await.or_else(|e| {
+                tracing::warn!("succinct pricing unavailable, falling back to fixed: {e}");
+                Ok(DynPricing::Fixed(FixedPricing::default()))
+            }),
+            _ => Ok(DynPricing::Fixed(FixedPricing::default())),
+        },
+    }
 }
 
 pub async fn execute(args: EstimateArgs) -> anyhow::Result<()> {
@@ -52,14 +129,19 @@ pub async fn execute(args: EstimateArgs) -> anyhow::Result<()> {
     println!("Aggregation needed: {}", needs_aggregation);
     println!();
 
+    let pricing = resolve_pricing(&config, args.pricing.as_deref(), intent.backend).await?;
+
     if mock_mode {
         println!("Mock mode: executing cost estimation with mock backend...");
         let backend = MockProverBackend;
         let program = MockProgram::new("range-ethereum");
         let witness = MockWitness::default();
 
-        let estimate = backend.estimate_cost(&program, &witness).await?;
-        print_estimate(&estimate, num_ranges, needs_aggregation);
+        let cycle_estimate = backend.count_cycles(&program, &witness).await?;
+        let pricing_info = pricing.price(&cycle_estimate).await?;
+        let cost_estimate = compose_cost_estimate(&cycle_estimate, &pricing_info);
+
+        print_estimate(&cost_estimate, &pricing_info, num_ranges, needs_aggregation);
         println!();
         println!("Note: mock estimates are zero — use a real backend for accurate costs.");
     } else {
@@ -82,30 +164,63 @@ pub async fn execute(args: EstimateArgs) -> anyhow::Result<()> {
 
             println!("Executing guest program to count cycles...");
             let start = std::time::Instant::now();
-            let estimate = run_estimate(&intent, &witness).await?;
+            let cycle_estimate = run_cycle_count(&intent, &witness).await?;
             let elapsed = start.elapsed();
 
             println!("Execution completed in {:.2}s", elapsed.as_secs_f64());
             println!();
-            print_estimate(&estimate, num_ranges, needs_aggregation);
+
+            let pricing_info = pricing.price(&cycle_estimate).await?;
+            let cost_estimate = compose_cost_estimate(&cycle_estimate, &pricing_info);
+
+            print_estimate(&cost_estimate, &pricing_info, num_ranges, needs_aggregation);
         }
     }
 
     Ok(())
 }
 
+fn compose_cost_estimate(
+    cycle: &CycleEstimate,
+    pricing: &open_zk_core::types::PricingInfo,
+) -> CostEstimate {
+    CostEstimate {
+        estimated_cycles: cycle.cycles,
+        estimated_cost_usd: pricing.cost_usd,
+        estimated_duration_secs: pricing.duration_secs,
+    }
+}
+
+fn format_cost(pricing: &PricingInfo) -> String {
+    match (
+        &pricing.native_cost,
+        &pricing.native_symbol,
+        &pricing.token_usd_rate,
+    ) {
+        (Some(native), Some(symbol), Some(rate)) => {
+            format!(
+                "${:.4} ({:.7} {} @ ${:.2}/{})",
+                pricing.cost_usd, native, symbol, rate, symbol
+            )
+        }
+        _ => format!("${:.4}", pricing.cost_usd),
+    }
+}
+
 fn print_estimate(
-    estimate: &open_zk_core::types::CostEstimate,
+    estimate: &CostEstimate,
+    pricing: &PricingInfo,
     num_ranges: u64,
     needs_aggregation: bool,
 ) {
     println!("Per-range estimate:");
     println!("  Cycles:   {}", format_cycles(estimate.estimated_cycles));
-    println!("  Cost:     ${:.4}", estimate.estimated_cost_usd);
+    println!("  Cost:     {}", format_cost(pricing));
     println!(
         "  Duration: {}",
         format_duration(estimate.estimated_duration_secs)
     );
+    println!("  Pricing:  {}", pricing.source);
 
     if needs_aggregation {
         let total_cycles = estimate.estimated_cycles * num_ranges;
@@ -158,10 +273,10 @@ fn format_duration(secs: u64) -> String {
 }
 
 #[cfg(feature = "kona")]
-async fn run_estimate(
+async fn run_cycle_count(
     intent: &open_zk_orchestrator::ResolvedIntent,
     witness: &open_zk_core::traits::RawWitness,
-) -> anyhow::Result<open_zk_core::types::CostEstimate> {
+) -> anyhow::Result<CycleEstimate> {
     use open_zk_core::types::ZkvmBackend;
 
     match intent.backend {
@@ -169,7 +284,7 @@ async fn run_estimate(
             let backend = MockProverBackend;
             let program = MockProgram::new("range-ethereum");
             let mock_witness = MockWitness::default();
-            let estimate = backend.estimate_cost(&program, &mock_witness).await?;
+            let estimate = backend.count_cycles(&program, &mock_witness).await?;
             Ok(estimate)
         }
         #[cfg(feature = "sp1")]
@@ -184,7 +299,7 @@ async fn run_estimate(
             let elf = open_zk_host::include_range_ethereum_elf!();
             let program = Sp1Program::new("range-ethereum", elf.to_vec());
             let backend = Sp1ProverBackend::new().await;
-            let estimate = backend.estimate_cost(&program, &sp1_witness).await?;
+            let estimate = backend.count_cycles(&program, &sp1_witness).await?;
             Ok(estimate)
         }
         #[cfg(feature = "risc0")]
@@ -198,7 +313,7 @@ async fn run_estimate(
             let image_id = open_zk_host::elf::risc0::GUEST_RANGE_ETHEREUM_RISC0_ID;
             let program = RiscZeroProgram::new("range-ethereum", image_id, elf.to_vec());
             let backend = RiscZeroProverBackend::new();
-            let estimate = backend.estimate_cost(&program, &rz_witness).await?;
+            let estimate = backend.count_cycles(&program, &rz_witness).await?;
             Ok(estimate)
         }
         #[allow(unreachable_patterns)]

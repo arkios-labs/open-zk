@@ -21,7 +21,6 @@ kona = [
     "dep:kona-protocol",
     "dep:alloy-provider",
     "dep:alloy-rpc-types-eth",
-    "dep:serde_json",
     "dep:url",
     "dep:rkyv",
 ]
@@ -34,6 +33,9 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 sp1-sdk = { workspace = true, optional = true }
 risc0-zkvm = { workspace = true, optional = true }
 open-zk-build-risc0 = { workspace = true, optional = true }
@@ -48,7 +50,6 @@ kona-genesis = { workspace = true, optional = true }
 kona-protocol = { workspace = true, optional = true }
 alloy-provider = { workspace = true, optional = true }
 alloy-rpc-types-eth = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 
 [dev-dependencies]
