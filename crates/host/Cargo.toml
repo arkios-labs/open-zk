@@ -34,6 +34,8 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
 sp1-sdk = { workspace = true, optional = true }
 risc0-zkvm = { workspace = true, optional = true }
 open-zk-build-risc0 = { workspace = true, optional = true }

@@ -24,6 +24,8 @@ pub struct CliConfig {
     pub network: NetworkConfig,
     #[serde(default)]
     pub proving: ProvingConfig,
+    #[serde(default)]
+    pub pricing: PricingConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +53,35 @@ pub struct ProvingConfig {
     pub target_finality_secs: u64,
     #[serde(default = "default_max_concurrent")]
     pub max_concurrent_proofs: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PricingConfig {
+    /// Pricing provider: "auto", "fixed", or "boundless".
+    #[serde(default = "default_pricing_provider")]
+    pub provider: String,
+    /// Override ETH/USD rate instead of fetching from CoinGecko.
+    pub eth_usd_price: Option<f64>,
+    /// Boundless percentile to use (default: "p50").
+    #[serde(default = "default_percentile")]
+    pub boundless_percentile: String,
+}
+
+fn default_pricing_provider() -> String {
+    "auto".to_string()
+}
+fn default_percentile() -> String {
+    "p50".to_string()
+}
+
+impl Default for PricingConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_pricing_provider(),
+            eth_usd_price: None,
+            boundless_percentile: default_percentile(),
+        }
+    }
 }
 
 fn default_backend() -> String {
@@ -152,6 +183,7 @@ impl CliConfig {
                 chain_id: None,
             },
             proving: ProvingConfig::default(),
+            pricing: PricingConfig::default(),
         };
         toml::to_string_pretty(&config).unwrap()
     }
@@ -192,6 +224,7 @@ max_concurrent_proofs = 4
                 chain_id: None,
             },
             proving: ProvingConfig::default(),
+            pricing: PricingConfig::default(),
         };
 
         let sdk_config = config.to_sdk_config().unwrap();
@@ -223,6 +256,7 @@ max_concurrent_proofs = 4
                 backend: "mock".to_string(),
                 ..ProvingConfig::default()
             },
+            pricing: PricingConfig::default(),
         };
         assert!(config.is_mock_mode());
     }
@@ -238,9 +272,51 @@ max_concurrent_proofs = 4
                 chain_id: None,
             },
             proving: ProvingConfig::default(),
+            pricing: PricingConfig::default(),
         };
         // Only true if SP1_PROVER=mock env var is NOT set
         // (we can't control env in this test, so just verify config-based detection)
         assert!(!config.is_mock_mode() || std::env::var("SP1_PROVER").is_ok_and(|v| v == "mock"));
+    }
+
+    #[test]
+    fn parse_pricing_config() {
+        let toml_str = r#"
+[network]
+l1_rpc_url = "http://localhost:8545"
+l2_rpc_url = "http://localhost:9545"
+l1_beacon_url = "http://localhost:5052"
+
+[pricing]
+provider = "boundless"
+eth_usd_price = 3500.0
+boundless_percentile = "p75"
+"#;
+        let config: CliConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.pricing.provider, "boundless");
+        assert_eq!(config.pricing.eth_usd_price, Some(3500.0));
+        assert_eq!(config.pricing.boundless_percentile, "p75");
+    }
+
+    #[test]
+    fn pricing_config_defaults() {
+        let toml_str = r#"
+[network]
+l1_rpc_url = "http://localhost:8545"
+l2_rpc_url = "http://localhost:9545"
+l1_beacon_url = "http://localhost:5052"
+"#;
+        let config: CliConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.pricing.provider, "auto");
+        assert_eq!(config.pricing.eth_usd_price, None);
+        assert_eq!(config.pricing.boundless_percentile, "p50");
+    }
+
+    #[test]
+    fn default_toml_includes_pricing() {
+        let toml_str = CliConfig::default_toml();
+        let parsed: CliConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(parsed.pricing.provider, "auto");
+        assert_eq!(parsed.pricing.boundless_percentile, "p50");
     }
 }

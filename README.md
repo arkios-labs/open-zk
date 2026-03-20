@@ -66,6 +66,11 @@ allowed_backends = ["sp1", "risc0"]  # Vendor allowlist for "auto" mode
 security = "standard"           # "maximum" | "standard" | "economy"
 target_finality_secs = 1800     # Target finality time in seconds
 max_concurrent_proofs = 4       # Parallel proof jobs
+
+[pricing]
+provider = "auto"               # "auto" | "fixed" | "boundless"
+# eth_usd_price = 3500.0        # Override ETH/USD rate (default: CoinGecko)
+boundless_percentile = "p50"    # Boundless market percentile (p5..p99)
 ```
 
 **Configuration Reference:**
@@ -135,6 +140,9 @@ open-zk prove --start-block 100 --end-block 200
 
 # Estimate cost before proving
 open-zk estimate --start-block 100 --end-block 200
+
+# Use Boundless market pricing (live rates from Boundless Indexer)
+open-zk estimate --start-block 100 --end-block 200 --pricing boundless
 
 # Run as a long-lived service (continuous proving loop)
 open-zk serve --poll-interval 12
@@ -325,7 +333,7 @@ sequenceDiagram
 
 | Concept | Description |
 |---------|-------------|
-| `ProverBackend` | Backend-agnostic trait: `prove()`, `verify()`, `estimate_cost()` |
+| `ProverBackend` | Backend-agnostic trait: `prove()`, `verify()`, `count_cycles()` |
 | `WitnessProvider` | Fetches L1/L2 data and generates `RawWitness` |
 | `PreimageStore` | rkyv-backed preimage oracle serving kona's derivation pipeline in the guest |
 | `ProvingMode` | `Execute` (no proof), `Compressed`, `Groth16` (on-chain verifiable) |

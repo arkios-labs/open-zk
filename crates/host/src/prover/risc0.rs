@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
+use open_zk_core::types::{CycleEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, Receipt};
 
 /// Convert a RISC Zero image ID ([u32; 8]) to a 32-byte array (little-endian words).
@@ -166,11 +166,11 @@ impl ProverBackend for RiscZeroProverBackend {
         Ok(true)
     }
 
-    async fn estimate_cost(
+    async fn count_cycles(
         &self,
         program: &Self::Program,
         witness: &Self::Witness,
-    ) -> Result<CostEstimate, Self::Error> {
+    ) -> Result<CycleEstimate, Self::Error> {
         let env = witness.build_env()?;
         let prover = default_prover();
 
@@ -178,12 +178,9 @@ impl ProverBackend for RiscZeroProverBackend {
             .prove(env, &program.elf)
             .map_err(|e| RiscZeroProverError::ProvingFailed(e.to_string()))?;
 
-        let cycles = prove_info.stats.total_cycles;
-
-        Ok(CostEstimate {
-            estimated_cycles: cycles,
-            estimated_cost_usd: (cycles as f64) / 10_000_000.0 * 0.008,
-            estimated_duration_secs: cycles / 500_000,
+        Ok(CycleEstimate {
+            cycles: prove_info.stats.total_cycles,
+            backend: ZkvmBackend::RiscZero,
         })
     }
 }
