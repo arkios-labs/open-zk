@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
+use open_zk_core::types::{CycleEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 
 /// Mock witness that carries raw bytes for testing.
 #[derive(Debug, Default)]
@@ -78,15 +78,14 @@ impl ProverBackend for MockProverBackend {
         Ok(proof.backend == ZkvmBackend::Mock)
     }
 
-    async fn estimate_cost(
+    async fn count_cycles(
         &self,
         _program: &Self::Program,
         _witness: &Self::Witness,
-    ) -> Result<CostEstimate, Self::Error> {
-        Ok(CostEstimate {
-            estimated_cycles: 0,
-            estimated_cost_usd: 0.0,
-            estimated_duration_secs: 0,
+    ) -> Result<CycleEstimate, Self::Error> {
+        Ok(CycleEstimate {
+            cycles: 0,
+            backend: ZkvmBackend::Mock,
         })
     }
 }
@@ -113,12 +112,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mock_estimate_cost_is_zero() {
+    async fn mock_count_cycles_is_zero() {
         let backend = MockProverBackend;
         let program = MockProgram::new("test");
         let witness = MockWitness::default();
 
-        let estimate = backend.estimate_cost(&program, &witness).await.unwrap();
-        assert_eq!(estimate.estimated_cost_usd, 0.0);
+        let estimate = backend.count_cycles(&program, &witness).await.unwrap();
+        assert_eq!(estimate.cycles, 0);
+        assert_eq!(estimate.backend, ZkvmBackend::Mock);
     }
 }

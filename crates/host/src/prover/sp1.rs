@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use open_zk_core::traits::{GuestProgram, ProverBackend, WitnessInput};
-use open_zk_core::types::{CostEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
+use open_zk_core::types::{CycleEstimate, ProofArtifact, ProvingMode, ZkvmBackend};
 use sp1_sdk::{Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
 
 /// Witness carrying SP1-formatted stdin data.
@@ -165,11 +165,11 @@ impl ProverBackend for Sp1ProverBackend {
         Ok(true)
     }
 
-    async fn estimate_cost(
+    async fn count_cycles(
         &self,
         program: &Self::Program,
         witness: &Self::Witness,
-    ) -> Result<CostEstimate, Self::Error> {
+    ) -> Result<CycleEstimate, Self::Error> {
         let elf = program.to_elf();
 
         let (_, report) = self
@@ -178,13 +178,9 @@ impl ProverBackend for Sp1ProverBackend {
             .await
             .map_err(|e| Sp1ProverError::ProvingFailed(e.to_string()))?;
 
-        let cycles = report.total_instruction_count();
-
-        Ok(CostEstimate {
-            estimated_cycles: cycles,
-            // Rough estimate: ~$0.01 per 10M cycles on Succinct Network
-            estimated_cost_usd: (cycles as f64) / 10_000_000.0 * 0.01,
-            estimated_duration_secs: cycles / 1_000_000, // ~1M cycles/sec
+        Ok(CycleEstimate {
+            cycles: report.total_instruction_count(),
+            backend: ZkvmBackend::Sp1,
         })
     }
 }

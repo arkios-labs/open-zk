@@ -1,4 +1,4 @@
-use crate::types::{CostEstimate, ProofArtifact, ProvingMode};
+use crate::types::{CycleEstimate, ProofArtifact, ProvingMode};
 use async_trait::async_trait;
 
 /// A program that can be executed inside a zkVM.
@@ -32,9 +32,9 @@ pub trait ProverBackend: Send + Sync {
         proof: &ProofArtifact,
     ) -> Result<bool, Self::Error>;
 
-    async fn estimate_cost(
+    async fn count_cycles(
         &self,
         program: &Self::Program,
         witness: &Self::Witness,
-    ) -> Result<CostEstimate, Self::Error>;
+    ) -> Result<CycleEstimate, Self::Error>;
 }

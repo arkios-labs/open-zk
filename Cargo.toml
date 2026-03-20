@@ -86,5 +86,8 @@ risc0-build = "3"
 # Build crates
 open-zk-build-risc0 = { path = "build/risc0" }
 
+# HTTP client
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
 # Serialization (zero-copy)
 rkyv = { version = "0.7", default-features = false }

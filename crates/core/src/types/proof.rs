@@ -50,7 +50,29 @@ pub struct ProofRequest {
     pub mode: ProvingMode,
 }
 
-/// Cost estimate returned by a prover backend.
+/// Result of executing a guest program to count cycles, without pricing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CycleEstimate {
+    pub cycles: u64,
+    pub backend: ZkvmBackend,
+}
+
+/// Pricing breakdown from a PricingProvider.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PricingInfo {
+    pub cost_usd: f64,
+    pub duration_secs: u64,
+    /// e.g. "fixed", "succinct-market-median-20", "boundless-market-p50"
+    pub source: String,
+    /// Cost in the native token (e.g. 0.0000357 ETH).
+    pub native_cost: Option<f64>,
+    /// Native token symbol (e.g. "ETH", "PROVE").
+    pub native_symbol: Option<String>,
+    /// Token-to-USD rate used for conversion (e.g. 3500.0).
+    pub token_usd_rate: Option<f64>,
+}
+
+/// Cost estimate combining cycle count and pricing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CostEstimate {
     pub estimated_cycles: u64,
