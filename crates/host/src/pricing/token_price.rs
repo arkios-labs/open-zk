@@ -45,7 +45,10 @@ pub async fn fetch_prove_usd(override_price: Option<f64>) -> f64 {
 }
 
 async fn fetch_token_price(url: &str, token_key: &str) -> anyhow::Result<f64> {
-    let client = reqwest::Client::builder().timeout(FETCH_TIMEOUT).build()?;
+    let client = reqwest::Client::builder()
+        .timeout(FETCH_TIMEOUT)
+        .user_agent("open-zk/0.1")
+        .build()?;
     let resp: serde_json::Value = client.get(url).send().await?.json().await?;
     let token = resp
         .get(token_key)

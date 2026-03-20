@@ -69,6 +69,7 @@ impl BoundlessPricing {
     pub fn with_options(indexer_url: &str, percentile: Percentile, eth_usd: f64) -> Self {
         let client = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
+            .user_agent("open-zk/0.1")
             .build()
             .expect("failed to build HTTP client");
         Self {
@@ -133,7 +134,10 @@ impl BoundlessPricing {
             "{}/v1/market/aggregates?aggregation=hourly&limit=1&sort=desc",
             self.indexer_url
         );
-        let resp: AggregateResponse = self.client.get(&url).send().await?.json().await?;
+        let text = self.client.get(&url).send().await?.text().await?;
+        let resp: AggregateResponse = serde_json::from_str(&text).map_err(|e| {
+            BoundlessPricingError::ParseWei(text.chars().take(200).collect(), e.to_string())
+        })?;
         let entry = resp.data.first().ok_or(BoundlessPricingError::NoData)?;
         entry.price_for_percentile(&self.percentile)
     }
