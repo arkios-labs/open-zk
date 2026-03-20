@@ -78,7 +78,7 @@ kona-providers-alloy = { git = "https://github.com/op-rs/kona", tag = "kona-clie
 kona-registry = { git = "https://github.com/op-rs/kona", tag = "kona-client/v1.2.7", default-features = false }
 
 # zkVM backends (optional, behind feature flags)
-sp1-sdk = "6"
+sp1-sdk = { version = "6", features = ["network"] }
 sp1-zkvm = "6"
 risc0-zkvm = "3"
 risc0-build = "3"
