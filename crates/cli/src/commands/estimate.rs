@@ -23,8 +23,8 @@ pub struct EstimateArgs {
     #[arg(long, short, default_value = "open-zk.toml")]
     pub config: PathBuf,
 
-    /// Pricing provider: "auto", "fixed", or "boundless".
-    /// Auto selects boundless for risc0 backend, fixed for others.
+    /// Pricing provider: "auto", "fixed", "boundless", or "succinct".
+    /// Auto selects boundless for risc0, succinct for sp1, fixed for others.
     #[arg(long)]
     pub pricing: Option<String>,
 }
@@ -33,6 +33,8 @@ pub struct EstimateArgs {
 enum DynPricing {
     Fixed(FixedPricing),
     Boundless(BoundlessPricing),
+    #[cfg(feature = "sp1")]
+    Succinct(open_zk_host::pricing::SuccinctPricing),
 }
 
 impl DynPricing {
@@ -40,8 +42,27 @@ impl DynPricing {
         match self {
             Self::Fixed(p) => p.price(estimate).await.map_err(Into::into),
             Self::Boundless(p) => p.price(estimate).await.map_err(Into::into),
+            #[cfg(feature = "sp1")]
+            Self::Succinct(p) => p.price(estimate).await.map_err(Into::into),
         }
     }
+}
+
+async fn resolve_boundless(config: &CliConfig) -> DynPricing {
+    let percentile = Percentile::parse(&config.pricing.boundless_percentile).unwrap_or_default();
+    let eth_usd = open_zk_host::pricing::fetch_eth_usd(config.pricing.eth_usd_price).await;
+    DynPricing::Boundless(BoundlessPricing::with_options(
+        "https://d2mdvlnmyov1e1.cloudfront.net",
+        percentile,
+        eth_usd,
+    ))
+}
+
+#[cfg(feature = "sp1")]
+async fn resolve_succinct(config: &CliConfig) -> anyhow::Result<DynPricing> {
+    let prove_usd = open_zk_host::pricing::fetch_prove_usd(config.pricing.prove_usd_price).await;
+    let pricing = open_zk_host::pricing::SuccinctPricing::from_env(prove_usd)?;
+    Ok(DynPricing::Succinct(pricing))
 }
 
 async fn resolve_pricing(
@@ -52,33 +73,29 @@ async fn resolve_pricing(
     let provider = pricing_arg.unwrap_or(config.pricing.provider.as_str());
 
     match provider {
-        "boundless" => {
-            let percentile =
-                Percentile::parse(&config.pricing.boundless_percentile).unwrap_or_default();
-            let eth_usd = open_zk_host::pricing::fetch_eth_usd(config.pricing.eth_usd_price).await;
-            Ok(DynPricing::Boundless(BoundlessPricing::with_options(
-                "https://d2mdvlnmyov1e1.cloudfront.net",
-                percentile,
-                eth_usd,
-            )))
+        "boundless" => Ok(resolve_boundless(config).await),
+        "succinct" => {
+            #[cfg(feature = "sp1")]
+            {
+                resolve_succinct(config).await
+            }
+            #[cfg(not(feature = "sp1"))]
+            anyhow::bail!(
+                "succinct pricing requires the `sp1` feature — compile with: \
+                 cargo build --bin open-zk --features sp1"
+            )
         }
         "fixed" => Ok(DynPricing::Fixed(FixedPricing::default())),
-        // "auto": boundless for RiscZero, fixed for others
-        _ => {
-            if backend == ZkvmBackend::RiscZero {
-                let percentile =
-                    Percentile::parse(&config.pricing.boundless_percentile).unwrap_or_default();
-                let eth_usd =
-                    open_zk_host::pricing::fetch_eth_usd(config.pricing.eth_usd_price).await;
-                Ok(DynPricing::Boundless(BoundlessPricing::with_options(
-                    "https://d2mdvlnmyov1e1.cloudfront.net",
-                    percentile,
-                    eth_usd,
-                )))
-            } else {
+        // "auto": boundless for RiscZero, succinct for Sp1, fixed for others
+        _ => match backend {
+            ZkvmBackend::RiscZero => Ok(resolve_boundless(config).await),
+            #[cfg(feature = "sp1")]
+            ZkvmBackend::Sp1 => resolve_succinct(config).await.or_else(|e| {
+                tracing::warn!("succinct pricing unavailable, falling back to fixed: {e}");
                 Ok(DynPricing::Fixed(FixedPricing::default()))
-            }
-        }
+            }),
+            _ => Ok(DynPricing::Fixed(FixedPricing::default())),
+        },
     }
 }
 

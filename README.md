@@ -68,8 +68,9 @@ target_finality_secs = 1800     # Target finality time in seconds
 max_concurrent_proofs = 4       # Parallel proof jobs
 
 [pricing]
-provider = "auto"               # "auto" | "fixed" | "boundless"
+provider = "auto"               # "auto" | "fixed" | "boundless" | "succinct"
 # eth_usd_price = 3500.0        # Override ETH/USD rate (default: CoinGecko)
+# prove_usd_price = 0.10        # Override PROVE/USD rate (default: CoinGecko)
 boundless_percentile = "p50"    # Boundless market percentile (p5..p99)
 ```
 
@@ -143,6 +144,9 @@ open-zk estimate --start-block 100 --end-block 200
 
 # Use Boundless market pricing (live rates from Boundless Indexer)
 open-zk estimate --start-block 100 --end-block 200 --pricing boundless
+
+# Use Succinct Network pricing (median of recent fulfilled proofs)
+open-zk estimate --start-block 100 --end-block 200 --pricing succinct
 
 # Run as a long-lived service (continuous proving loop)
 open-zk serve --poll-interval 12

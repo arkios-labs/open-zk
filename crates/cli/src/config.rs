@@ -57,11 +57,13 @@ pub struct ProvingConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PricingConfig {
-    /// Pricing provider: "auto", "fixed", or "boundless".
+    /// Pricing provider: "auto", "fixed", "boundless", or "succinct".
     #[serde(default = "default_pricing_provider")]
     pub provider: String,
     /// Override ETH/USD rate instead of fetching from CoinGecko.
     pub eth_usd_price: Option<f64>,
+    /// Override PROVE/USD rate instead of fetching from CoinGecko.
+    pub prove_usd_price: Option<f64>,
     /// Boundless percentile to use (default: "p50").
     #[serde(default = "default_percentile")]
     pub boundless_percentile: String,
@@ -79,6 +81,7 @@ impl Default for PricingConfig {
         Self {
             provider: default_pricing_provider(),
             eth_usd_price: None,
+            prove_usd_price: None,
             boundless_percentile: default_percentile(),
         }
     }
