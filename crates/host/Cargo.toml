@@ -7,7 +7,7 @@ description = "Host-side prover backends and witness generation"
 
 [features]
 default = []
-sp1 = ["dep:sp1-sdk", "dep:bincode"]
+sp1 = ["dep:sp1-sdk", "dep:bincode", "dep:rustls"]
 risc0 = ["dep:risc0-zkvm", "dep:bincode", "dep:open-zk-build-risc0"]
 # Rebuild RISC Zero guest ELFs from source (requires rzup toolchain)
 rebuild-risc0-guest = ["risc0", "open-zk-build-risc0/rebuild-guest", "open-zk-build-risc0/debug-guest-build"]
@@ -37,6 +37,7 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sp1-sdk = { workspace = true, optional = true }
+rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"], optional = true }
 risc0-zkvm = { workspace = true, optional = true }
 open-zk-build-risc0 = { workspace = true, optional = true }
 bincode = { version = "1", optional = true }

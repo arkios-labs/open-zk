@@ -3,10 +3,7 @@ use open_zk_core::traits::PricingProvider;
 use open_zk_core::types::{CycleEstimate, PricingInfo, ZkvmBackend};
 use sp1_sdk::network::{
     client::NetworkClient,
-    proto::{
-        types::{FulfillmentStatus, ProofMode},
-        GetFilteredProofRequestsResponse,
-    },
+    proto::{types::FulfillmentStatus, GetFilteredProofRequestsResponse},
     signer::NetworkSigner,
     NetworkMode,
 };
@@ -28,8 +25,11 @@ pub struct SuccinctPricing {
 }
 
 impl SuccinctPricing {
-    /// Create from `NETWORK_PRIVATE_KEY` env var.
+    /// Create from `NETWORK_PRIVATE_KEY` or `SP1_PRIVATE_KEY` env var.
     pub fn from_env(prove_usd: f64) -> Result<Self, SuccinctPricingError> {
+        // Ensure a rustls CryptoProvider is installed (sp1-sdk uses aws-lc-rs).
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
         let private_key = std::env::var("NETWORK_PRIVATE_KEY")
             .or_else(|_| std::env::var("SP1_PRIVATE_KEY"))
             .map_err(|_| {
@@ -70,7 +70,7 @@ impl SuccinctPricing {
                 None,                                      // to
                 Some(self.sample_size),                    // limit
                 None,                                      // page
-                Some(ProofMode::Compressed as i32),        // mode
+                None,                                      // mode (any)
                 None,                                      // not_bid_by
                 None,                                      // execute_fail_cause
                 None,                                      // settlement_status
@@ -79,32 +79,17 @@ impl SuccinctPricing {
             .await
             .map_err(|e| SuccinctPricingError::Grpc(e.to_string()))?;
 
-        // Extract (deduction_amount, cycles) pairs from either Auction or Base response.
-        let pairs: Vec<(String, u64)> = match response {
-            GetFilteredProofRequestsResponse::Auction(r) => r
-                .requests
-                .into_iter()
-                .filter_map(|req| Some((req.deduction_amount?, req.cycles?)))
-                .collect(),
-            GetFilteredProofRequestsResponse::Base(r) => r
-                .requests
-                .into_iter()
-                .filter_map(|req| Some((req.deduction_amount?, req.cycles?)))
-                .collect(),
+        // Extract (cost_prove, cycles) from either Auction or Base response.
+        // Cost is computed from gas_used * gas_price (PROVE wei), falling back to deduction_amount.
+        let pairs: Vec<(f64, u64)> = match response {
+            GetFilteredProofRequestsResponse::Auction(r) => extract_cost_pairs_auction(r.requests),
+            GetFilteredProofRequestsResponse::Base(r) => extract_cost_pairs_base(r.requests),
         };
 
-        // Compute price_per_cycle for each fulfilled request.
         let mut prices_per_cycle: Vec<f64> = pairs
             .iter()
-            .filter_map(|(deduction_str, cycles)| {
-                let deduction: u128 = deduction_str.parse().ok()?;
-                if *cycles == 0 {
-                    return None;
-                }
-                // deduction is in PROVE wei (18 decimals), convert to PROVE
-                let deduction_prove = deduction as f64 / 1e18;
-                Some(deduction_prove / *cycles as f64)
-            })
+            .filter(|(_, cycles)| *cycles > 0)
+            .map(|(cost_prove, cycles)| cost_prove / *cycles as f64)
             .collect();
 
         if prices_per_cycle.is_empty() {
@@ -177,6 +162,49 @@ impl PricingProvider for SuccinctPricing {
     }
 }
 
+/// Extract (cost_in_prove, cycles) from Auction ProofRequest list.
+fn extract_cost_pairs_auction(
+    requests: Vec<sp1_sdk::network::proto::auction_types::ProofRequest>,
+) -> Vec<(f64, u64)> {
+    requests
+        .into_iter()
+        .filter_map(|req| {
+            let cycles = req.cycles?;
+            // Prefer gas_used * gas_price; fall back to deduction_amount.
+            let cost_wei = if let (Some(gas_used), Some(gas_price)) = (req.gas_used, req.gas_price)
+            {
+                gas_used as u128 * gas_price as u128
+            } else if let Some(ref deduction) = req.deduction_amount {
+                deduction.parse::<u128>().ok()?
+            } else {
+                return None;
+            };
+            Some((cost_wei as f64 / 1e18, cycles))
+        })
+        .collect()
+}
+
+/// Extract (cost_in_prove, cycles) from Base ProofRequest list.
+fn extract_cost_pairs_base(
+    requests: Vec<sp1_sdk::network::proto::base_types::ProofRequest>,
+) -> Vec<(f64, u64)> {
+    requests
+        .into_iter()
+        .filter_map(|req| {
+            let cycles = req.cycles?;
+            let cost_wei = if let (Some(gas_used), Some(gas_price)) = (req.gas_used, req.gas_price)
+            {
+                gas_used as u128 * gas_price as u128
+            } else if let Some(ref deduction) = req.deduction_amount {
+                deduction.parse::<u128>().ok()?
+            } else {
+                return None;
+            };
+            Some((cost_wei as f64 / 1e18, cycles))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,9 +257,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // requires NETWORK_PRIVATE_KEY and live network access
+    #[ignore] // requires NETWORK_PRIVATE_KEY or SP1_PRIVATE_KEY and live network access
     async fn live_succinct_pricing() {
-        let pricing = SuccinctPricing::from_env(1.5).expect("NETWORK_PRIVATE_KEY required");
+        let pricing = SuccinctPricing::from_env(1.5)
+            .expect("NETWORK_PRIVATE_KEY or SP1_PRIVATE_KEY required");
         let estimate = CycleEstimate {
             cycles: 250_000_000,
             backend: ZkvmBackend::Sp1,
